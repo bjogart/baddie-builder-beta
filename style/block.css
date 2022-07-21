@@ -1,0 +1,161 @@
+.block {
+  max-width: 35rem;
+}
+
+.cols {
+  display: flex;
+  justify-content: space-between;
+}
+
+.floatl {
+  float: left;
+}
+
+.floatr {
+  float: right;
+}
+
+.flexmore {
+  flex: 10 10 content;
+}
+
+.word {
+  display: inline;
+}
+
+.word + .word {
+  margin-left: 0.4rem;
+}
+
+.hide {
+  display: none;
+}
+
+.inlineblock {
+  display: inline-block;
+}
+
+html {
+  font-family: "DM Sans", sans-serif;
+  font-size: 18px;
+  line-height: 1.5em;
+  color: #111;
+}
+
+.h {
+  font-family: "DM Serif Text", serif;
+  font-weight: bold;
+}
+
+.huge {
+  font-size: 1.5rem;
+}
+
+.big {
+  font-size: 1.2rem;
+}
+
+.inlinehd {
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+  font-weight: bold;
+}
+
+.runin {
+  text-transform: capitalize;
+  font-weight: bold;
+}
+
+.emph {
+  font-weight: bold;
+}
+
+.textr {
+  text-align: right;
+}
+
+.rnd {
+  border-radius: 15%/50%;
+}
+
+.lrnd {
+  padding: 0 0.17rem 0 0.345rem;
+  border-top-left-radius: 75% 50%;
+  border-bottom-left-radius: 75% 50%;
+}
+
+.rrnd {
+  padding: 0 0.345rem 0 0.17rem;
+  border-top-right-radius: 75% 50%;
+  border-bottom-right-radius: 75% 50%;
+}
+
+.sep {
+  border-bottom: 1px solid #111;
+}
+
+.err {
+  color: crimson;
+}
+
+.btncol {
+  background-color: #666;
+  color: #fff;
+  user-select: none;
+}
+
+.btnhover:hover {
+  border-color: #111;
+  background-color: #111;
+}
+
+.btnshape {
+  width: 4.675rem;
+  display: inline-block;
+  padding: 0 0.935rem 0 0.345rem;
+}
+
+.btnshape:last-child {
+  padding-left: 0.345rem;
+}
+
+.bibtnshape {
+  padding: 0 0.17rem 0 0.17rem;
+  text-align: center;
+}
+
+.lvbtnwidth {
+  width: 4rem;
+}
+
+.kwbtnwidth {
+  width: 4.675rem;
+}
+
+.maxbtnwidth {
+  width: 100%;
+}
+
+.entry:hover {
+  outline: 0.5px solid #666;
+}
+
+input {
+  width: 100%;
+}
+
+.midtext {
+  text-align: center;
+}
+
+.vsp {
+  padding-top: 0.17rem;
+}
+
+.vspb {
+  padding-bottom: 0.17rem;
+}
+
+.hsp + .hsp {
+  margin-left: 0.345rem;
+}
