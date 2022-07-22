@@ -44,6 +44,7 @@ class Eq {
     addTerm(term) { this.term += term; }
     addWeight(weight) { this.weight *= weight; }
     addFact(fact) { this.fact *= fact; }
+    invertTerm() { this.term = -this.term; }
 }
 function divideDistributable(eqs, budget) {
     const norm = eqs.reduce((res, eq) => res + eq.weight, 0);

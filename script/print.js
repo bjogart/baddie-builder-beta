@@ -89,15 +89,23 @@ function cmpAesthetic(a, b) {
     }
     return 0;
 }
-function renderDice(goal, temp) {
-    const sizes = temp.size.isSome() ? [temp.size.unwrap()] : POLY_DMG_DICE;
+function renderDice(goal, template) {
+    const sizes = template.size.isSome() ? [template.size.unwrap()] : POLY_DMG_DICE;
     return sizes.reduce((best, size) => {
         const mean = size / 2 + 0.5;
-        const allowance = goal - temp.plus.unwrapOr(0);
-        const plusSpace = temp.plus.isSome() ? 0 : 1;
-        const count = temp.count.unwrapOr(Math.floor(allowance / (mean + plusSpace)));
+        const plusConstr = template.plus.unwrapOr(0);
+        const allowance = goal - plusConstr;
+        const spaceForPlus = template.plus.isSome() ? 0 : 1;
+        let count;
+        if (template.count.isNone()) {
+            const unrounded = allowance / (mean + spaceForPlus);
+            count = plusConstr === 0 ? Math.round(unrounded) : Math.floor(unrounded);
+        }
+        else {
+            count = template.count.unwrap();
+        }
         const diceExp = count * mean;
-        const plus = temp.plus.unwrapOr(Math.round(allowance - diceExp));
+        const plus = template.plus.unwrapOr(Math.round(allowance - diceExp));
         const diff = goal - (diceExp + plus);
         const err = diff * diff;
         const die = Dice.make(count, size, plus, diff, err);

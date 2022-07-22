@@ -2,6 +2,15 @@
 function dispatchOrErr(v, ctor) {
     return 'errors' in v ? new Err('', v.errors, '') : ctor(v);
 }
+function effCtor(gs, as, lbl) {
+    return dispatchOrErr(Eq.fromArgs(as), eq => {
+        eq.invertTerm();
+        const entry = new ConstVal(Opt.some(eq), Opt.none());
+        const get = (gs) => gs.effModSum;
+        const set = (gs, n) => gs.effModSum -= n;
+        return new Lbl(fmtInlineHd(`${lbl}&nbsp;&#10731;`), '', new ZeroSum(gs, get, set, eq, entry, 'saves'));
+    });
+}
 const TAG_PATS = [
     {
         name: 'hp',
@@ -48,62 +57,32 @@ const TAG_PATS = [
     {
         name: 'str',
         argPats: new Map([['str', []], ['plus', [NUM]], ['minus', [NUM]]]),
-        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => {
-            const entry = new ConstVal(Opt.some(eq), Opt.none());
-            const get = (gs) => gs.effModSum;
-            const set = (gs, n) => gs.effModSum += n;
-            return new Lbl(fmtInlineHd('str&nbsp;'), '', new ZeroSum(gs, get, set, eq, entry));
-        }),
+        ctor: (gs, as) => effCtor(gs, as, 'str'),
     },
     {
         name: 'dex',
         argPats: new Map([['dex', []], ['plus', [NUM]], ['minus', [NUM]]]),
-        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => {
-            const entry = new ConstVal(Opt.some(eq), Opt.none());
-            const get = (gs) => gs.effModSum;
-            const set = (gs, n) => gs.effModSum += n;
-            return new Lbl(fmtInlineHd('dex&nbsp;'), '', new ZeroSum(gs, get, set, eq, entry));
-        }),
+        ctor: (gs, as) => effCtor(gs, as, 'dex'),
     },
     {
         name: 'con',
         argPats: new Map([['con', []], ['plus', [NUM]], ['minus', [NUM]]]),
-        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => {
-            const entry = new ConstVal(Opt.some(eq), Opt.none());
-            const get = (gs) => gs.effModSum;
-            const set = (gs, n) => gs.effModSum += n;
-            return new Lbl(fmtInlineHd('con&nbsp;'), '', new ZeroSum(gs, get, set, eq, entry));
-        }),
+        ctor: (gs, as) => effCtor(gs, as, 'con'),
     },
     {
         name: 'int',
         argPats: new Map([['int', []], ['plus', [NUM]], ['minus', [NUM]]]),
-        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => {
-            const entry = new ConstVal(Opt.some(eq), Opt.none());
-            const get = (gs) => gs.effModSum;
-            const set = (gs, n) => gs.effModSum += n;
-            return new Lbl(fmtInlineHd('int&nbsp;'), '', new ZeroSum(gs, get, set, eq, entry));
-        }),
+        ctor: (gs, as) => effCtor(gs, as, 'int'),
     },
     {
         name: 'wis',
         argPats: new Map([['wis', []], ['plus', [NUM]], ['minus', [NUM]]]),
-        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => {
-            const entry = new ConstVal(Opt.some(eq), Opt.none());
-            const get = (gs) => gs.effModSum;
-            const set = (gs, n) => gs.effModSum += n;
-            return new Lbl(fmtInlineHd('wis&nbsp;'), '', new ZeroSum(gs, get, set, eq, entry));
-        }),
+        ctor: (gs, as) => effCtor(gs, as, 'wis'),
     },
     {
         name: 'cha',
         argPats: new Map([['cha', []], ['plus', [NUM]], ['minus', [NUM]]]),
-        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => {
-            const entry = new ConstVal(Opt.some(eq), Opt.none());
-            const get = (gs) => gs.effModSum;
-            const set = (gs, n) => gs.effModSum += n;
-            return new Lbl(fmtInlineHd('cha&nbsp;'), '', new ZeroSum(gs, get, set, eq, entry));
-        }),
+        ctor: (gs, as) => effCtor(gs, as, 'cha'),
     },
     {
         name: 'title',
@@ -186,10 +165,12 @@ class ZeroSum {
     gs;
     get;
     entry;
-    constructor(gs, get, add, eq, entry) {
+    obj;
+    constructor(gs, get, add, eq, entry, obj) {
         this.gs = gs;
         this.get = get;
         this.entry = entry;
+        this.obj = obj;
         add(gs, eq.term);
     }
     ty() { return 'eff'; }
@@ -205,7 +186,7 @@ class ZeroSum {
             const abs = Math.abs(sum);
             const pluralS = abs === 1 ? '' : 's';
             const quant = sum > 0 ? 'many' : 'few';
-            err = sum === 0 ? '' : fmtErr(` ${abs} point${pluralS} too ${quant} in saves`);
+            err = sum === 0 ? '' : fmtErr(` ${abs} point${pluralS} too ${quant} in ${this.obj}`);
         }
         else {
             err = '';
@@ -289,7 +270,7 @@ class DiceVal {
         if (dice.err >= DICE_FMT_MAX_ERR_THRES) {
             const abs = fmtToDigits(Math.abs(dice.diff), FMT_DIGITS);
             const rel = dice.diff > 0 ? 'under' : 'over';
-            approxErr = fmtErr(` (dice are inaccurate: mean is ${abs} ${rel} target value)`);
+            approxErr = fmtErr(` inaccurate dice expression: average roll is ${abs} ${rel} target)`);
         }
         else {
             approxErr = '';
