@@ -35,7 +35,7 @@ class Eq {
             n = readNum(val.unwrap().content()).unwrap();
             eq.addWeight(n);
         }
-        val = args.get('strip');
+        val = args.get('cut');
         if (val) {
             n = readNum(val.unwrap().content()).unwrap();
             if (n === 0) {
