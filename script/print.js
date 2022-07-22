@@ -8,18 +8,18 @@ function fmtToDigits(n, digits) {
     return splits.length > 1 ? `${splits[0]}.${splits[1].substring(0, digits)}` : splits[0];
 }
 class Dice {
-    static make(count, size, cons, diff, err) {
-        return new Dice(count, size, cons, diff, err);
+    static make(count, size, plus, diff, err) {
+        return new Dice(count, size, plus, diff, err);
     }
     count;
     size;
-    cons;
+    plus;
     diff;
     err;
     constructor(count, size, cons, diff, err) {
         this.count = count;
         this.size = size;
-        this.cons = cons;
+        this.plus = cons;
         this.err = err;
         this.diff = diff;
     }
@@ -81,10 +81,10 @@ function cmpAesthetic(a, b) {
     if (dErr !== 0) {
         return dErr;
     }
-    if (a.cons >= 0 && b.cons < 0) {
+    if (a.plus >= 0 && b.plus < 0) {
         return -1;
     }
-    else if (b.cons >= 0 && a.cons < 0) {
+    else if (b.plus >= 0 && a.plus < 0) {
         return 1;
     }
     return 0;
@@ -93,34 +93,42 @@ function renderDice(goal, temp) {
     const sizes = temp.size.isSome() ? [temp.size.unwrap()] : POLY_DMG_DICE;
     return sizes.reduce((best, size) => {
         const mean = size / 2 + 0.5;
-        const allowance = goal - temp.plus.unwrapOr(0);
-        const count = temp.count.unwrapOr(Math.floor(allowance / mean));
+        let count;
+        let allowance;
+        if (temp.plus.isSome()) {
+            allowance = goal - temp.plus.unwrap();
+            count = temp.count.unwrapOr(Math.floor(allowance / mean));
+        }
+        else {
+            allowance = goal / mean;
+            count = Math.floor(allowance - 1);
+        }
         const diceExp = count * mean;
-        const cons = temp.plus.unwrapOr(Math.round(allowance - diceExp));
-        const diff = goal - (diceExp + cons);
+        const plus = temp.plus.unwrapOr(Math.round(allowance - diceExp));
+        const diff = goal - (diceExp + plus);
         const err = diff * diff;
-        const die = Dice.make(count, size, cons, diff, err);
+        const die = Dice.make(count, size, plus, diff, err);
         return cmpAesthetic(best, die) <= 0 ? best : die;
-    }, { count: 0, size: 0, cons: 0, diff: 0, err: Number.POSITIVE_INFINITY });
+    }, { count: 0, size: 0, plus: 0, diff: 0, err: Number.POSITIVE_INFINITY });
 }
 function diceMean(dice) {
     const meanRoll = dice.size / 2 + 0.5;
-    return dice.count * meanRoll + dice.cons;
+    return dice.count * meanRoll + dice.plus;
 }
 function printDice(dice) {
     if (dice.count === 0 || dice.size === 0) {
-        return `${dice.cons}`;
+        return `${dice.plus}`;
     }
     const diceFmt = dice.count === 1 ? `d${dice.size}` : `${dice.count}d${dice.size}`;
     let consFmt;
-    if (dice.cons === 0) {
+    if (dice.plus === 0) {
         consFmt = '';
     }
-    else if (dice.cons < 0) {
-        consFmt = `${dice.cons}`;
+    else if (dice.plus < 0) {
+        consFmt = `${dice.plus}`;
     }
     else {
-        consFmt = `+${dice.cons}`;
+        consFmt = `+${dice.plus}`;
     }
     const avg = `${Math.trunc(diceMean(dice))}`;
     return `${avg} (${diceFmt}${consFmt})`;
