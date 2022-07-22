@@ -93,16 +93,9 @@ function renderDice(goal, temp) {
     const sizes = temp.size.isSome() ? [temp.size.unwrap()] : POLY_DMG_DICE;
     return sizes.reduce((best, size) => {
         const mean = size / 2 + 0.5;
-        let count;
-        let allowance;
-        if (temp.plus.isSome()) {
-            allowance = goal - temp.plus.unwrap();
-            count = temp.count.unwrapOr(Math.floor(allowance / mean));
-        }
-        else {
-            allowance = goal / mean;
-            count = Math.floor(allowance - 1);
-        }
+        const allowance = goal - temp.plus.unwrapOr(0);
+        const plusSpace = temp.plus.isSome() ? 0 : 1;
+        const count = temp.count.unwrapOr(Math.floor(allowance / (mean + plusSpace)));
         const diceExp = count * mean;
         const plus = temp.plus.unwrapOr(Math.round(allowance - diceExp));
         const diff = goal - (diceExp + plus);

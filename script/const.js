@@ -2,20 +2,7 @@
 const BDHIT_LO = "Brutal";
 const BDHIT_DF = "Flexible";
 const BDHIT_HI = "Deft";
-const PLHIT_LO = "Wary";
-const PLHIT_DF = "Calm";
-const PLHIT_HI = "Hardy";
-const DEFMUL_LO = "Raider";
-const DEFMUL_DF = "Soldier";
-const DEFMUL_HI = "Sentinel";
 const PLHIT_CYCLE = {};
-PLHIT_CYCLE[PLHIT_LO] = PLHIT_DF;
-PLHIT_CYCLE[PLHIT_DF] = PLHIT_HI;
-PLHIT_CYCLE[PLHIT_HI] = PLHIT_LO;
-const PLHIT_MOD = {};
-PLHIT_MOD[PLHIT_HI] = -0.1;
-PLHIT_MOD[PLHIT_DF] = 0;
-PLHIT_MOD[PLHIT_LO] = 0.1;
 const BDHIT_CYCLE = {};
 BDHIT_CYCLE[BDHIT_LO] = BDHIT_DF;
 BDHIT_CYCLE[BDHIT_DF] = BDHIT_HI;
@@ -24,6 +11,19 @@ const BDHIT_MOD = {};
 BDHIT_MOD[BDHIT_LO] = -0.1;
 BDHIT_MOD[BDHIT_DF] = 0;
 BDHIT_MOD[BDHIT_HI] = 0.1;
+const PLHIT_LO = "Wary";
+const PLHIT_DF = "Calm";
+const PLHIT_HI = "Hardy";
+PLHIT_CYCLE[PLHIT_LO] = PLHIT_DF;
+PLHIT_CYCLE[PLHIT_DF] = PLHIT_HI;
+PLHIT_CYCLE[PLHIT_HI] = PLHIT_LO;
+const PLHIT_MOD = {};
+PLHIT_MOD[PLHIT_HI] = -0.1;
+PLHIT_MOD[PLHIT_DF] = 0;
+PLHIT_MOD[PLHIT_LO] = 0.1;
+const DEFMUL_LO = "Raider";
+const DEFMUL_DF = "Soldier";
+const DEFMUL_HI = "Sentinel";
 const DEFMUL_CYCLE = {};
 DEFMUL_CYCLE[DEFMUL_LO] = DEFMUL_DF;
 DEFMUL_CYCLE[DEFMUL_DF] = DEFMUL_HI;
@@ -32,14 +32,26 @@ const DEFMUL_MOD = {};
 DEFMUL_MOD[DEFMUL_LO] = 0.8;
 DEFMUL_MOD[DEFMUL_DF] = 1.0;
 DEFMUL_MOD[DEFMUL_HI] = 1.25;
-const SIZE_CYCLE = {
-    'Medium': 'Large',
-    'Large': 'Huge',
-    'Huge': 'Gargantuan',
-    'Gargantuan': 'Tiny',
-    'Tiny': 'Small',
-    'Small': 'Medium',
-};
+const SIZE_TINY = 'Tiny';
+const SIZE_SMALL = 'Small';
+const SIZE_MEDIUM = 'Medium';
+const SIZE_LARGE = 'Large';
+const SIZE_HUGE = 'Huge';
+const SIZE_GARGANTUAN = 'Gargantuan';
+const SIZE_CYCLE = {};
+SIZE_CYCLE[SIZE_TINY] = SIZE_SMALL;
+SIZE_CYCLE[SIZE_SMALL] = SIZE_MEDIUM;
+SIZE_CYCLE[SIZE_MEDIUM] = SIZE_LARGE;
+SIZE_CYCLE[SIZE_LARGE] = SIZE_HUGE;
+SIZE_CYCLE[SIZE_HUGE] = SIZE_GARGANTUAN;
+SIZE_CYCLE[SIZE_GARGANTUAN] = SIZE_TINY;
+const SIZE_HD = {};
+SIZE_HD[SIZE_TINY] = 4;
+SIZE_HD[SIZE_SMALL] = 6;
+SIZE_HD[SIZE_MEDIUM] = 8;
+SIZE_HD[SIZE_LARGE] = 10;
+SIZE_HD[SIZE_HUGE] = 12;
+SIZE_HD[SIZE_GARGANTUAN] = 20;
 const ENTRY_TEXT_DF = `<div class="entry vsp vspb act"><div class="disp" onclick="toggleEntry(this)"></div><input class="edit hide" type="text" onblur="toggleEntry(this)" value="Slam. [hit]; [dmg] bludgeoning." autocomplete="off"></div>`;
 const PLAYER_HIT = 0.6;
 const BADDIE_HIT = 0.6;

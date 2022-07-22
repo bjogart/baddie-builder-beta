@@ -9,7 +9,12 @@ const TAG_PATS = [
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['focus', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
         ]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => new Lbl(fmtInlineHd('hp&nbsp;'), '', new DiceVal(Opt.some(eq), Opt.none(), temp, false)))),
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
+            if (temp.size.isNone()) {
+                temp.size = Opt.some(lookupKeywordAndMod('size', SIZE_HD));
+            }
+            return new Lbl(fmtInlineHd('hp&nbsp;'), '', new DiceVal(Opt.some(eq), Opt.none(), temp, false));
+        })),
     },
     {
         name: 'dmg',

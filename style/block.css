@@ -82,14 +82,14 @@ html {
 
 .lrnd {
   padding: 0 0.17rem 0 0.345rem;
-  border-top-left-radius: 75% 50%;
-  border-bottom-left-radius: 75% 50%;
+  border-top-left-radius: 100% 50%;
+  border-bottom-left-radius: 100% 50%;
 }
 
 .rrnd {
   padding: 0 0.345rem 0 0.17rem;
-  border-top-right-radius: 75% 50%;
-  border-bottom-right-radius: 75% 50%;
+  border-top-right-radius: 100% 50%;
+  border-bottom-right-radius: 100% 50%;
 }
 
 .sep {
@@ -127,6 +127,10 @@ html {
 
 .kwbtnwidth {
   width: 4.75rem;
+}
+
+.contentwidth {
+  width: fit-content;
 }
 
 .maxbtnwidth {

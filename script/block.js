@@ -19,20 +19,10 @@ function incrLv(it) {
         refresh();
     }
 }
-function defMul() {
-    const elem = unwrapNullish(document.getElementById('defmul'), "no '#defmul' pane");
+function lookupKeywordAndMod(id, map = {}) {
+    const elem = unwrapNullish(document.getElementById(id), `no '#${id}' pane`);
     const kw = unwrapNullish(elem.firstChild?.textContent);
-    return unwrapNullish(DEFMUL_MOD[kw], `'DEFMUL_MOD' does not contain '${kw}'`);
-}
-function playerHitMod() {
-    const elem = unwrapNullish(document.getElementById('plhit'), "no '#plhit' pane");
-    const kw = unwrapNullish(elem.firstChild?.textContent);
-    return unwrapNullish(PLHIT_MOD[kw], `'PLHIT_MOD' does not contain '${kw}'`);
-}
-function baddieHitMod() {
-    const elem = unwrapNullish(document.getElementById('bdhit'), "no '#bdhit' pane");
-    const kw = unwrapNullish(elem.firstChild?.textContent);
-    return unwrapNullish(BDHIT_MOD[kw], `'BDHIT_MOD' does not contain '${kw}'`);
+    return unwrapNullish(map[kw], `no such keyword: '${kw}'`);
 }
 function entries() { return document.getElementsByClassName('entry'); }
 function cycleKeywords(it, cycle) {
@@ -93,7 +83,7 @@ function budget(lv, defMul, playerHitMod, baddieHitMod) {
 }
 function refresh() {
     const lvEl = unwrapNullish(document.getElementById("lv"), "no '#lv' pane");
-    const { hp, ac, dmg, hit } = budget(level(lvEl), defMul(), playerHitMod(), baddieHitMod());
+    const { hp, ac, dmg, hit } = budget(level(lvEl), lookupKeywordAndMod('defmul', DEFMUL_MOD), lookupKeywordAndMod('plhit', PLHIT_MOD), lookupKeywordAndMod('bdhit', BDHIT_MOD));
     const builder = new EntryBuilder();
     const entryElems = entries();
     const entriesAndParse = Array.from(entryElems)
