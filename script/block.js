@@ -107,9 +107,10 @@ function refresh() {
     const acEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.ac()).unwrapOr([]));
     const dmgEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.dmg()).unwrapOr([]));
     const hitEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.hit()).unwrapOr([]));
+    const actionCount = document.getElementsByClassName('act').length;
     const divs = {
         hp: divideDistributable(hpEqs, hp), ac: divideTerm(acEqs, ac),
-        dmg: divideDistributable(dmgEqs, dmg), hit: divideTerm(hitEqs, hit),
+        dmg: divideDistributable(dmgEqs, dmg * actionCount), hit: divideTerm(hitEqs, hit),
     };
     const entriesToUpdate = [];
     entriesAndParse.forEach(it => {
