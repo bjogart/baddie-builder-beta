@@ -297,17 +297,22 @@ class DiceVal {
     triviaAfter() { return ''; }
 }
 class Mv {
-    static readTok(t, errors) {
+    static readTok(lbl, t, errors) {
         if (!t) {
             return Opt.none();
         }
         const s = t.unwrap().content();
         const mbNum = readNum(s);
         if (mbNum.isNone()) {
-            errors.push(`${s} is not a valid MV value`);
+            errors.push(fmtErr(`${s} is not a valid number`));
             return Opt.none();
         }
-        return Opt.some(`${mbNum.unwrap()}${METRIC_PRIME}`);
+        const num = mbNum.unwrap();
+        if (num <= 0) {
+            errors.push(fmtErr(`you cannot ${lbl.unwrapOr('walk')} at ${num} MV/round`));
+        }
+        const fmtLbl = lbl.isSome() ? `${lbl.unwrap()} ` : '';
+        return Opt.some(`${fmtLbl}${mbNum.unwrap()}${METRIC_PRIME}`);
     }
     err;
     walk;
@@ -316,10 +321,10 @@ class Mv {
     swim;
     constructor(args) {
         let errors = [];
-        this.walk = Mv.readTok(args.get('walk'), errors).unwrapOr(`30${METRIC_PRIME}`);
-        this.climb = Mv.readTok(args.get('climb'), errors).unwrapOr('');
-        this.fly = Mv.readTok(args.get('fly'), errors).unwrapOr('');
-        this.swim = Mv.readTok(args.get('swim'), errors).unwrapOr('');
+        this.walk = Mv.readTok(Opt.none(), args.get('walk'), errors).unwrapOr(`30${METRIC_PRIME}`);
+        this.climb = Mv.readTok(Opt.some('climb'), args.get('climb'), errors).unwrapOr('');
+        this.fly = Mv.readTok(Opt.some('fly'), args.get('fly'), errors).unwrapOr('');
+        this.swim = Mv.readTok(Opt.some('swim'), args.get('swim'), errors).unwrapOr('');
         this.err = errors.join(ERR_SEP);
     }
     ty() { return 'mv'; }
