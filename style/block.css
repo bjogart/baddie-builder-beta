@@ -9,6 +9,7 @@ html {
 .cols {
   display: flex;
   justify-content: space-between;
+  align-items: flex-end;
 }
 
 .floatl {
@@ -19,8 +20,8 @@ html {
   float: right;
 }
 
-.flexmore {
-  flex: 10 10 content;
+.flexnone {
+  flex: none;
 }
 
 .word {
@@ -31,12 +32,18 @@ html {
   margin-left: 0.4rem;
 }
 
-.hide {
-  display: none;
-}
-
 .inlineblock {
   display: inline-block;
+}
+
+.valignbottom {
+  display: flex;
+  flex-flow: row-reverse wrap-reverse;
+  justify-content: left;
+}
+
+.hide {
+  display: none;
 }
 
 html {

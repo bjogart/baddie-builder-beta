@@ -69,6 +69,19 @@ function writeEntryDisp(entry, text) {
     const pane = unwrapNullish(entry.querySelector('.disp'), "entry has no '.edit' pane");
     pane.innerHTML = text;
 }
+function fmtTitle() {
+    const entry = unwrapNullish(document.getElementById('title'));
+    const text = unwrapNullish(entry.textContent);
+    const splits = text.split(/\s+/);
+    splits.reverse();
+    unwrapNullish(entry.querySelector('.disp')).replaceChildren(...splits.map(s => {
+        const sp = document.createElement('span');
+        sp.innerText = s;
+        sp.innerText += ' ';
+        sp.style.whiteSpace = 'pre-wrap';
+        return sp;
+    }));
+}
 function budget(lv, defMul, playerHitMod, baddieHitMod) {
     const entry = STATS.reduce((prev, cur) => Math.abs(prev.level - lv) <= Math.abs(cur.level - lv) ? prev : cur);
     const endurance = entry.hp / PLAYER_HIT * defMul;
@@ -112,4 +125,5 @@ function refresh() {
         }
     });
     entriesToUpdate.forEach(it => writeEntryDisp(it.entry, it.parse.unwrap().fmt(divs)));
+    fmtTitle();
 }
