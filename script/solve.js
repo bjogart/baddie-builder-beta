@@ -30,10 +30,20 @@ class Eq {
                 eq.addFact(1 / n);
             }
         }
-        val = args.get('focus');
+        val = args.get('favor');
         if (val) {
             n = readNum(val.unwrap().content()).unwrap();
             eq.addWeight(n);
+        }
+        val = args.get('strip');
+        if (val) {
+            n = readNum(val.unwrap().content()).unwrap();
+            if (n === 0) {
+                errors.push(fmtErr('division by 0'));
+            }
+            else {
+                eq.addWeight(1 / n);
+            }
         }
         return errors.length > 0 ? { errors: errors.join(ERR_SEP) } : eq;
     }

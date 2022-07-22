@@ -16,7 +16,8 @@ const TAG_PATS = [
         name: 'hp',
         argPats: new Map([
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
-            ['focus', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
+            ['favor', [NUM]], ['strip', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]],
+            ['dplus', [NUM]],
         ]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
             if (temp.size.isNone()) {
@@ -29,7 +30,8 @@ const TAG_PATS = [
         name: 'dmg',
         argPats: new Map([
             ['dmg', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
-            ['focus', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
+            ['favor', [NUM]], ['strip', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]],
+            ['dplus', [NUM]],
         ]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => new DiceVal(Opt.none(), Opt.some(eq), temp, true))),
     },
