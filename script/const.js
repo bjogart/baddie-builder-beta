@@ -40,7 +40,7 @@ const SIZE_CYCLE = {
     'Tiny': 'Small',
     'Small': 'Medium',
 };
-const ENTRY_TEXT_DF = `<div class="entry vsp vspb act"><div class="disp" onclick="toggleEntry(this)"></div><input class="edit hide" type="text" onblur="toggleEntry(this)" value="Slam. [hit]; [dmg] bludgeoning."></div>`;
+const ENTRY_TEXT_DF = `<div class="entry vsp vspb act"><div class="disp" onclick="toggleEntry(this)"></div><input class="edit hide" type="text" onblur="toggleEntry(this)" value="Slam. [hit]; [dmg] bludgeoning." autocomplete="off"></div>`;
 const PLAYER_HIT = 0.6;
 const BADDIE_HIT = 0.6;
 const HIT_INCR = 0.05;
