@@ -17,13 +17,15 @@ const TAG_PATS = [
         argPats: new Map([
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['favor', [NUM]], ['cut', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]],
-            ['dplus', [NUM]],
+            ['dplus', [NUM]], ['nolabel', []], ['hide', []],
         ]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
             if (temp.size.isNone()) {
                 temp.size = Opt.some(lookupKeywordAndMod('size', SIZE_HD));
             }
-            return new Lbl(fmtInlineHd('hp&nbsp;'), '', new DiceVal(Opt.some(eq), Opt.none(), temp, false));
+            const lbl = as.get('nolabel') ? '' : fmtInlineHd('hp&nbsp;');
+            const ctor = as.get('hide') ? (e) => new Hide(e) : (e) => new Lbl(lbl, '', e);
+            return ctor(new DiceVal(Opt.some(eq), Opt.none(), temp, false));
         })),
     },
     {
@@ -31,9 +33,12 @@ const TAG_PATS = [
         argPats: new Map([
             ['dmg', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['favor', [NUM]], ['cut', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]],
-            ['dplus', [NUM]],
+            ['dplus', [NUM]], ['hide', []],
         ]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => new DiceVal(Opt.none(), Opt.some(eq), temp, true))),
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
+            const ctor = as.get('hide') ? (e) => new Hide(e) : (e) => e;
+            return ctor(new DiceVal(Opt.none(), Opt.some(eq), temp, true));
+        })),
     },
     {
         name: 'hit',
@@ -162,6 +167,20 @@ class Lbl {
     content() { return `${this.pre}${this.val.content()}${this.post}`; }
     triviaBefore() { return ''; }
     triviaAfter() { return this.val.triviaAfter(); }
+}
+class Hide {
+    entry;
+    constructor(entry) { this.entry = entry; }
+    ty() { return 'hide'; }
+    containsErrors() { return this.entry.containsErrors(); }
+    hp() { return this.entry.hp(); }
+    ac() { return this.entry.ac(); }
+    dmg() { return this.entry.dmg(); }
+    hit() { return this.entry.hit(); }
+    fmt(ds) { this.entry.fmt(ds); return ''; }
+    content() { return ''; }
+    triviaBefore() { return ''; }
+    triviaAfter() { return ''; }
 }
 class ZeroSum {
     gs;
