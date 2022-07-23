@@ -1,10 +1,9 @@
 html {
-  font-size: min(20px, 2.5vw);
+  font-size: min(20px, 2.75vw);
 }
 
 .block {
   width: 35rem;
-  min-width: 35rem;
   max-width: 35rem;
 }
 

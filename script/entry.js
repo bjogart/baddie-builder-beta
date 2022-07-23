@@ -484,7 +484,7 @@ function matchArgs(globals, args, pat) {
         else {
             const arg = it.arg.name.content().toLowerCase();
             if (dictArgs.has(arg)) {
-                invalidArgs.push(fmtErr(`'${arg}' defined multiple times`));
+                invalidArgs.push(fmtErr(`'${arg}' defined more than once`));
             }
             else {
                 const val = it.arg.arg.map(it => it.val);
