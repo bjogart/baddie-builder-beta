@@ -17,15 +17,16 @@ const TAG_PATS = [
         argPats: new Map([
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['favor', [NUM]], ['cut', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]],
-            ['dplus', [NUM]], ['nolabel', []], ['hide', []],
+            ['dplus', [NUM]], ['heal', []], ['hide', []],
         ]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
             if (temp.size.isNone()) {
                 temp.size = Opt.some(lookupKeywordAndMod('size', SIZE_HD));
             }
-            const lbl = as.get('nolabel') ? '' : fmtInlineHd('hp&nbsp;');
+            const lbl = as.get('heal') ? '' : fmtInlineHd('hp&nbsp;');
             const ctor = as.get('hide') ? (e) => new Hide(e) : (e) => new Lbl(lbl, '', e);
-            return ctor(new DiceVal(Opt.some(eq), Opt.none(), temp, false));
+            const emph = as.get('heal') !== undefined;
+            return ctor(new DiceVal(Opt.some(eq), Opt.none(), temp, emph));
         })),
     },
     {
