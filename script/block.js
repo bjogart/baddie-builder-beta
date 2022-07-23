@@ -108,18 +108,17 @@ function refresh() {
     });
     const hpEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.hp()).unwrapOr([]));
     const acEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.ac()).unwrapOr([]));
-    const dmgEqs = entriesAndParse.map(it => it.parse.map(e => e.dmg()).unwrapOr([]));
+    const dmgEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.dmg()).unwrapOr([]));
     const hitEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.hit()).unwrapOr([]));
-    const hpDiv = divideDistributable(hpEqs, hp);
-    const acDiv = divideTerm(acEqs, ac);
-    const hitDiv = divideTerm(hitEqs, hit);
-    const entriesParseAndDivs = entriesAndParse.map(it => ({
-        entry: it.entry,
-        parse: it.parse,
-        divs: { hp: hpDiv, ac: acDiv, dmg: divideDistributable(dmgEqs.shift(), dmg), hit: hitDiv }
-    }));
+    const actionCount = entriesAndParse.reduce((res, it) => res + it.parse.map(e => e.dmg().length > 0 ? 1 : 0).unwrapOr(0), 0);
+    const divs = {
+        hp: divideDistributable(hpEqs, hp),
+        ac: divideTerm(acEqs, ac),
+        dmg: divideDistributable(dmgEqs, dmg * actionCount),
+        hit: divideTerm(hitEqs, hit),
+    };
     const entriesToUpdate = [];
-    entriesParseAndDivs.forEach(it => {
+    entriesAndParse.forEach(it => {
         if (it.parse.isNone()) {
             it.entry.remove();
         }
@@ -127,6 +126,6 @@ function refresh() {
             entriesToUpdate.push(it);
         }
     });
-    entriesToUpdate.forEach(it => writeEntryDisp(it.entry, it.parse.unwrap().fmt(it.divs)));
+    entriesToUpdate.forEach(it => writeEntryDisp(it.entry, it.parse.unwrap().fmt(divs)));
     fmtTitle();
 }
