@@ -482,8 +482,14 @@ function matchArgs(globals, args, pat) {
             invalidArgs.push(it.err.unwrap());
         }
         else {
-            const val = it.arg.arg.map(it => it.val);
-            dictArgs.set(it.arg.name.content(), val);
+            const arg = it.arg.name.content().toLowerCase();
+            if (dictArgs.has(arg)) {
+                invalidArgs.push(fmtErr(`'${arg}' defined multiple times`));
+            }
+            else {
+                const val = it.arg.arg.map(it => it.val);
+                dictArgs.set(arg, val);
+            }
         }
     });
     if (invalidArgs.length > 0) {
