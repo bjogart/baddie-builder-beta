@@ -95,7 +95,8 @@ function refresh() {
         const mbParse = str.trim().length === 0 ? Opt.none() : Opt.some(parse(str, builder));
         return { entry: it, parse: mbParse };
     });
-    const usageTags = entriesAndParse.flatMap(it => flattenOpt(it.parse.map(it => it.uses().map(uses => ({
+    const usageTags = entriesAndParse
+        .flatMap(it => flattenOpt(it.parse.map(it => it.uses().map(uses => ({
         uses,
         hasHp: it.containsHpTags(),
         hasDmg: it.containsDmgTags(),
@@ -105,15 +106,14 @@ function refresh() {
             const { uses, hasHp, hasDmg } = c.unwrap();
             if (hasHp) {
                 res[0] += uses;
-                res[2] += 1;
             }
             if (hasDmg) {
                 res[1] += uses;
-                res[3] += 1;
+                res[2] += 1;
             }
         }
         return res;
-    }, [0, 0, 0, 0]);
+    }, [0, 0, 0]);
     const normVecs = usageTags.map(c => c.map(c => [
         c.uses / hpTotalUseCount,
         c.uses * dmgUsageTagCount / dmgTotalUseCount
