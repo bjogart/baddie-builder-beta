@@ -42,16 +42,11 @@ class Eq {
                 eq.addFact(1 / n);
             }
         }
-        val = args.get('favor');
-        if (val) {
-            n = readNum(val.unwrap().content()).unwrap();
-            eq.addWeight(n);
-        }
-        val = args.get('cut');
+        val = args.get('uses');
         if (val) {
             n = readNum(val.unwrap().content()).unwrap();
             if (n === 0) {
-                errors.push(fmtErr('division by 0'));
+                eq.weight = 0;
             }
             else {
                 eq.addWeight(1 / n);
@@ -66,7 +61,6 @@ class Eq {
     addTerm(term) { this.term += term; }
     addWeight(weight) { this.weight *= weight; }
     addFact(fact) { this.fact *= fact; }
-    invertTerm() { this.term = -this.term; }
 }
 function divideDistributable(eqs, budget) {
     const norm = eqs.reduce((res, eq) => res + eq.weight, 0);

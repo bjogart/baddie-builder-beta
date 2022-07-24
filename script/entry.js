@@ -4,7 +4,6 @@ function dispatchOrErr(v, ctor) {
 }
 function effCtor(gs, as, lbl) {
     return dispatchOrErr(Eq.fromArgs(as), eq => {
-        eq.invertTerm();
         const entry = new ConstVal(Opt.some(eq), Opt.none());
         const get = (gs) => gs.effModSum;
         const set = (gs, n) => gs.effModSum -= n;
@@ -16,30 +15,24 @@ const TAG_PATS = [
         name: 'hp',
         argPats: new Map([
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
-            ['favor', [NUM]], ['cut', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]],
-            ['dplus', [NUM]], ['heal', []], ['hide', []],
+            ['uses', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]], ['heal', []]
         ]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
             if (temp.size.isNone()) {
                 temp.size = Opt.some(lookupKeywordAndMod('size', SIZE_HD));
             }
             const lbl = as.get('heal') ? '' : fmtInlineHd('hp&nbsp;');
-            const ctor = as.get('hide') ? (e) => new Hide(e) : (e) => new Lbl(lbl, '', e);
             const emph = as.get('heal') !== undefined;
-            return ctor(new DiceVal(Opt.some(eq), Opt.none(), temp, emph));
+            return new Lbl(lbl, '', new DiceVal(Opt.some(eq), Opt.none(), temp, emph));
         })),
     },
     {
         name: 'dmg',
         argPats: new Map([
             ['dmg', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
-            ['favor', [NUM]], ['cut', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]],
-            ['dplus', [NUM]], ['hide', []],
+            ['uses', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]], ['hide', []],
         ]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
-            const ctor = as.get('hide') ? (e) => new Hide(e) : (e) => e;
-            return ctor(new DiceVal(Opt.none(), Opt.some(eq), temp, true));
-        })),
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => new DiceVal(Opt.none(), Opt.some(eq), temp, true))),
     },
     {
         name: 'hit',
