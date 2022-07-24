@@ -18,15 +18,18 @@ function isInt(n) { return n === Math.trunc(n); }
 function panic(msg) { throw msg; }
 function unreachable() { return panic('entered unreachable code'); }
 function unwrapNullish(v, msg = 'unwrap() called on null') { return v ?? panic(msg); }
+function flattenOpt(opt) {
+    return opt.isSome() ? opt.unwrap() : Opt.none();
+}
 class Opt {
     static some(v) { return new Opt({ val: v }); }
     static none() { return new Opt({}); }
-    val;
-    constructor(v) { this.val = v; }
-    isSome() { return 'val' in this.val; }
-    isNone() { return !('val' in this.val); }
-    unwrap() { return this.isSome() ? this.val.val : panic('unwrap() called on none'); }
-    unwrapOr(def) { return this.isSome() ? this.val.val : def; }
-    map(op) { return this.isSome() ? Opt.some(op(this.val.val)) : Opt.none(); }
-    toList() { return this.isSome() ? [this.val.val] : []; }
+    optionalValue;
+    constructor(v) { this.optionalValue = v; }
+    isSome() { return 'val' in this.optionalValue; }
+    isNone() { return !('val' in this.optionalValue); }
+    unwrap() { return this.isSome() ? this.optionalValue.val : panic('unwrap() called on none'); }
+    unwrapOr(def) { return this.isSome() ? this.optionalValue.val : def; }
+    map(op) { return this.isSome() ? Opt.some(op(this.optionalValue.val)) : Opt.none(); }
+    toList() { return this.isSome() ? [this.optionalValue.val] : []; }
 }

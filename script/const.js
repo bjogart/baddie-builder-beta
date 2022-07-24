@@ -52,7 +52,7 @@ SIZE_HD[SIZE_MEDIUM] = 8;
 SIZE_HD[SIZE_LARGE] = 10;
 SIZE_HD[SIZE_HUGE] = 12;
 SIZE_HD[SIZE_GARGANTUAN] = 20;
-const ENTRY_TEXT_DF = '<div class="entry vsp vspb act"><div class="disp" onclick="toggleEntry(this)"></div><textarea class="edit hide" onblur="toggleEntry(this)" autocomplete="off">Slam. [hit]; [dmg] bludgeoning.</textarea> </div>';
+const ENTRY_TEXT_DF = '<div class="entry vsp vspb act"><div class="disp" onclick="toggleEntry(this)"></div><textarea class="edit hide" onblur="toggleEntry(this)" autocomplete="off">[uses: 1] Slam. [hit]; [dmg] bludgeoning.</textarea> </div>';
 const PLAYER_HIT = 0.6;
 const BADDIE_HIT = 0.6;
 const HIT_INCR = 0.05;

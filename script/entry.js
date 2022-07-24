@@ -15,7 +15,7 @@ const TAG_PATS = [
         name: 'hp',
         argPats: new Map([
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
-            ['uses', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]], ['heal', []]
+            ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]], ['heal', []],
         ]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
             if (temp.size.isNone()) {
@@ -30,7 +30,7 @@ const TAG_PATS = [
         name: 'dmg',
         argPats: new Map([
             ['dmg', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
-            ['uses', [NUM]], ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]], ['hide', []],
+            ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
         ]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => new DiceVal(Opt.none(), Opt.some(eq), temp, true))),
     },
@@ -41,6 +41,17 @@ const TAG_PATS = [
             const target = (as.get('vs') ?? Opt.none()).map(v => v.s).unwrapOr('ac').toLowerCase();
             return new Lbl('', ` vs. ${fmtInlineHd(target)}`, new Mod(Opt.none(), Opt.some(eq), true));
         }),
+    },
+    {
+        name: 'uses',
+        argPats: new Map([['uses', [NUM]]]),
+        ctor: (_gs, as) => {
+            const mbN = readNum(unwrapNullish(as.get('uses')).unwrap().content());
+            const n = mbN.isSome()
+                ? { val: mbN.unwrap() }
+                : { errors: `unreadable number ${as.get('uses')?.unwrap()}` };
+            return dispatchOrErr(n, n => new Uses(n.val));
+        }
     },
     {
         name: 'ac',
@@ -89,25 +100,57 @@ const TAG_PATS = [
         name: 'title',
         argPats: new Map([['title', []]]),
         ctor: (_gs, _as) => new Token(IDENT, '', 'Insert name here', ''),
-    }
+    },
 ];
 class Item {
     items;
     constructor(items) { this.items = items; }
     ty() { return 'item'; }
-    containsErrors() {
-        return this.items.reduce((b, it) => b || it.containsErrors(), false);
-    }
+    containsErrors() { return this.items.reduce((b, it) => b || it.containsErrors(), false); }
+    containsHpTags() { return this.items.reduce((b, it) => b || it.containsHpTags(), false); }
+    containsDmgTags() { return this.items.reduce((b, it) => b || it.containsDmgTags(), false); }
     hp() { return this.items.flatMap(it => it.hp()); }
     ac() { return this.items.flatMap(it => it.ac()); }
     dmg() { return this.items.flatMap(it => it.dmg()); }
     hit() { return this.items.flatMap(it => it.hit()); }
+    uses() {
+        for (const it of this.items) {
+            const u = it.uses();
+            if (u.isSome()) {
+                return u;
+            }
+        }
+        return Opt.none();
+    }
     fmt(ds) {
-        const endOfHeader = this.items.findIndex(it => match(it.content(), SENT_END));
-        return this.items.map((it, idx) => {
-            const fmt = it.fmt(ds);
-            return idx < endOfHeader ? fmtInlineHd(fmt) : fmt;
-        }).join('');
+        let seenUsesTag = false;
+        let seenHeader = false;
+        const fmts = [];
+        const errs = [];
+        for (const it of this.items) {
+            if (it.uses().isSome()) {
+                if (seenUsesTag) {
+                    errs.push("multiple [uses] tags in a single entry");
+                }
+                else {
+                    seenUsesTag = true;
+                }
+            }
+            let fmt = it.fmt(ds);
+            if (!seenHeader) {
+                fmtInlineHd(fmt);
+            }
+            fmts.push(fmt);
+        }
+        const containsDistributedVal = this.containsHpTags() || this.containsDmgTags();
+        if (seenUsesTag && !containsDistributedVal) {
+            errs.push('entry has a [uses] tag but no [hp] or [dmg] tags');
+        }
+        if (!seenUsesTag && containsDistributedVal) {
+            errs.push('entry has [hp] or [dmg] tags but no [uses] tag');
+        }
+        const errorMsgs = errs.length === 0 ? '' : ` ${errs.map(fmtErr).join(ERR_SEP)}`;
+        return `${fmts.join('')}${errorMsgs}`;
     }
     content() { return this.items.map(it => it.content()).join(''); }
     triviaBefore() { return this.items[0]?.triviaBefore() ?? ''; }
@@ -123,13 +166,14 @@ class Tag {
         this.r = r;
     }
     ty() { return 'tag'; }
-    containsErrors() {
-        return this.l.containsErrors() || this.inner.containsErrors() || this.r.containsErrors();
-    }
-    hp() { return this.inner.hp(); }
-    ac() { return this.inner.ac(); }
-    dmg() { return this.inner.dmg(); }
-    hit() { return this.inner.hit(); }
+    containsErrors() { return this.l.containsErrors() || this.inner.containsErrors() || this.r.containsErrors(); }
+    containsHpTags() { return !this.containsErrors() && this.inner.containsHpTags(); }
+    containsDmgTags() { return !this.containsErrors() && this.inner.containsDmgTags(); }
+    hp() { return this.containsErrors() ? [] : this.inner.hp(); }
+    ac() { return this.containsErrors() ? [] : this.inner.ac(); }
+    dmg() { return this.containsErrors() ? [] : this.inner.dmg(); }
+    hit() { return this.containsErrors() ? [] : this.inner.hit(); }
+    uses() { return this.containsErrors() ? Opt.none() : this.inner.uses(); }
     fmt(ds) {
         const lWs = this.l.triviaBefore();
         const rWs = this.r.triviaAfter();
@@ -148,29 +192,35 @@ class Tag {
 }
 class Lbl {
     pre;
-    val;
+    entry;
     post;
-    constructor(pre, post, val) { this.pre = pre; this.val = val; this.post = post; }
+    constructor(pre, post, val) { this.pre = pre; this.entry = val; this.post = post; }
     ty() { return 'lbl'; }
-    containsErrors() { return this.val.containsErrors(); }
-    hp() { return this.val.hp(); }
-    ac() { return this.val.ac(); }
-    dmg() { return this.val.dmg(); }
-    hit() { return this.val.hit(); }
-    fmt(ds) { return `${this.pre}${this.val.fmt(ds)}${this.post}`; }
-    content() { return `${this.pre}${this.val.content()}${this.post}`; }
+    containsErrors() { return this.entry.containsErrors(); }
+    containsHpTags() { return this.entry.containsHpTags(); }
+    containsDmgTags() { return this.entry.containsDmgTags(); }
+    hp() { return this.entry.hp(); }
+    ac() { return this.entry.ac(); }
+    dmg() { return this.entry.dmg(); }
+    hit() { return this.entry.hit(); }
+    uses() { return this.entry.uses(); }
+    fmt(ds) { return `${this.pre}${this.entry.fmt(ds)}${this.post}`; }
+    content() { return `${this.pre}${this.entry.content()}${this.post}`; }
     triviaBefore() { return ''; }
-    triviaAfter() { return this.val.triviaAfter(); }
+    triviaAfter() { return this.entry.triviaAfter(); }
 }
 class Hide {
     entry;
     constructor(entry) { this.entry = entry; }
     ty() { return 'hide'; }
     containsErrors() { return this.entry.containsErrors(); }
+    containsHpTags() { return this.entry.containsHpTags(); }
+    containsDmgTags() { return this.entry.containsDmgTags(); }
     hp() { return this.entry.hp(); }
     ac() { return this.entry.ac(); }
     dmg() { return this.entry.dmg(); }
     hit() { return this.entry.hit(); }
+    uses() { return this.entry.uses(); }
     fmt(ds) { this.entry.fmt(ds); return ''; }
     content() { return ''; }
     triviaBefore() { return ''; }
@@ -190,18 +240,21 @@ class ZeroSum {
     }
     ty() { return 'eff'; }
     containsErrors() { return this.get(this.gs) !== 0; }
+    containsHpTags() { return this.entry.containsHpTags(); }
+    containsDmgTags() { return this.entry.containsDmgTags(); }
     hp() { return this.entry.hp(); }
     ac() { return this.entry.ac(); }
     dmg() { return this.entry.dmg(); }
     hit() { return this.entry.hit(); }
+    uses() { return this.entry.uses(); }
     fmt(ds) {
         const sum = this.get(this.gs);
         let err;
         if (sum !== 0) {
             const abs = Math.abs(sum);
             const pluralS = abs === 1 ? '' : 's';
-            const quant = sum > 0 ? 'many' : 'few';
-            err = sum === 0 ? '' : fmtErr(` ${abs} point${pluralS} too ${quant} in ${this.obj}`);
+            const op = sum > 0 ? 'add' : 'subtract';
+            err = sum === 0 ? '' : fmtErr(`${op} ${abs} point${pluralS} from ${this.obj}`);
         }
         else {
             err = '';
@@ -218,10 +271,13 @@ class ConstVal {
     constructor(ac, hit) { this._ac = ac; this._hit = hit; }
     ty() { return 'const'; }
     containsErrors() { return false; }
+    containsHpTags() { return false; }
+    containsDmgTags() { return false; }
     hp() { return []; }
     ac() { return this._ac.toList(); }
     dmg() { return []; }
     hit() { return this._hit.toList(); }
+    uses() { return Opt.none(); }
     fmt(ds) {
         const div = this._ac.isSome() ? ds.ac : ds.hit;
         const val = unwrapNullish(div.shift());
@@ -242,14 +298,17 @@ class Mod {
     }
     ty() { return 'mod'; }
     containsErrors() { return false; }
+    containsHpTags() { return false; }
+    containsDmgTags() { return false; }
     hp() { return []; }
     ac() { return this._ac.toList(); }
     dmg() { return []; }
     hit() { return this._hit.toList(); }
+    uses() { return Opt.none(); }
     fmt(ds) {
         const div = this._ac.isSome() ? ds.ac : ds.hit;
         const val = unwrapNullish(div.shift());
-        const res = printMod(val);
+        const res = fmtMod(val);
         return this.emph ? fmtEmph(res) : res;
     }
     content() { return 'mod'; }
@@ -259,31 +318,34 @@ class Mod {
 class DiceVal {
     _hp;
     _dmg;
-    dTemp;
+    dTemplate;
     emph;
     constructor(hp, dmg, dTemp, emph) {
         this._hp = hp;
         this._dmg = dmg;
-        this.dTemp = dTemp;
+        this.dTemplate = dTemp;
         this.emph = emph;
     }
-    ty() { return 'dmg'; }
+    ty() { return 'diceval'; }
     containsErrors() { return false; }
+    containsHpTags() { return this._hp.isSome(); }
+    containsDmgTags() { return this._dmg.isSome(); }
     hp() { return this._hp.toList(); }
     ac() { return []; }
     dmg() { return this._dmg.toList(); }
     hit() { return []; }
+    uses() { return Opt.none(); }
     fmt(ds) {
         const div = this._hp.isSome() ? ds.hp : ds.dmg;
         const val = unwrapNullish(div.shift());
         if (val.isNone()) {
             return fmtErr('math error');
         }
-        const dice = renderDice(val.unwrap(), this.dTemp);
+        const dice = renderDice(val.unwrap(), this.dTemplate);
         const fmt = printDice(dice);
         let approxErr;
         if (dice.err >= DICE_FMT_MAX_ERR_THRES) {
-            const abs = fmtToDigits(Math.abs(dice.diff), FMT_DIGITS);
+            const abs = Math.abs(dice.diff).toFixed(FMT_DIGITS);
             const rel = dice.diff > 0 ? 'under' : 'over';
             approxErr = fmtErr(` inaccurate dice expression: average roll is ${abs} ${rel} target)`);
         }
@@ -330,16 +392,41 @@ class Mv {
     }
     ty() { return 'mv'; }
     containsErrors() { return this.err.length > 0; }
+    containsHpTags() { return false; }
+    containsDmgTags() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
     hit() { return []; }
+    uses() { return Opt.none(); }
     fmt(_ds) {
         return [this.walk, this.climb, this.fly, this.swim, this.err]
             .filter(s => s.length > 0)
             .join(', ');
     }
     content() { return 'mv'; }
+    triviaBefore() { return ''; }
+    triviaAfter() { return ''; }
+}
+class Uses {
+    n;
+    constructor(n) { this.n = n; }
+    ty() { return 'uses'; }
+    containsErrors() { return this.n < 0; }
+    containsHpTags() { return false; }
+    containsDmgTags() { return false; }
+    hp() { return []; }
+    ac() { return []; }
+    dmg() { return []; }
+    hit() { return []; }
+    uses() { return Opt.some(this.n); }
+    fmt(_ds) {
+        if (this.containsErrors()) {
+            return fmtErr(`cannot use an action ${this.n} times`);
+        }
+        return '';
+    }
+    content() { return ''; }
     triviaBefore() { return ''; }
     triviaAfter() { return ''; }
 }
@@ -373,10 +460,13 @@ class Num {
     }
     ty() { return 'num'; }
     containsErrors() { return false; }
+    containsHpTags() { return false; }
+    containsDmgTags() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
     hit() { return []; }
+    uses() { return Opt.none(); }
     fmt(_ds) { return this.content(); }
     content() { return this.s; }
     triviaBefore() { return this._triviaBefore; }
@@ -393,10 +483,13 @@ class Err {
     }
     ty() { return 'err'; }
     containsErrors() { return true; }
+    containsHpTags() { return false; }
+    containsDmgTags() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
     hit() { return []; }
+    uses() { return Opt.none(); }
     fmt(_ds) { return this.content(); }
     content() { return fmtErr(`${this.triviaBefore()}${this.msg}${this.triviaAfter()}`); }
     triviaBefore() { return this._triviaBefore; }
@@ -415,10 +508,13 @@ class Token {
     }
     ty() { return this.tag; }
     containsErrors() { return false; }
+    containsHpTags() { return false; }
+    containsDmgTags() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
     hit() { return []; }
+    uses() { return Opt.none(); }
     fmt(_ds) { return `${this.triviaBefore()}${this.s}${this.triviaAfter()}`; }
     content() { return this.s; }
     triviaBefore() { return this._triviaBefore; }

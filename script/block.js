@@ -58,6 +58,9 @@ function entryMarkupTextContent(entry) {
     if (s.trim().length === 0) {
         if (entry.id.length > 0) {
             s = `[${entry.id}]`;
+            if (entry.id === 'hp') {
+                s += ' [uses: 1]';
+            }
         }
         else {
             s = '';
@@ -69,7 +72,7 @@ function writeEntryDisp(entry, text) {
     const pane = unwrapNullish(entry.querySelector('.disp'), "entry has no '.edit' pane");
     pane.innerHTML = text;
 }
-function fmtTitle() {
+function rewrapTitle() {
     const entry = unwrapNullish(document.getElementById('title'));
     const text = unwrapNullish(entry.textContent);
     const splits = text.split(/\s+/);
@@ -87,33 +90,57 @@ function refresh() {
     const { hp, ac, dmg, hit } = budget(level(lvEl), lookupKeywordAndMod('defmul', DEFMUL_MOD), lookupKeywordAndMod('plhit', PLHIT_MOD), lookupKeywordAndMod('bdhit', BDHIT_MOD));
     const builder = new EntryBuilder();
     const entryElems = entries();
-    const entriesAndParse = Array.from(entryElems)
-        .map(it => {
+    const entriesAndParse = Array.from(entryElems).map(it => {
         const str = entryMarkupTextContent(it);
-        const mbParse = str.trim().length === 0
-            ? Opt.none() : Opt.some(parse(str, builder));
+        const mbParse = str.trim().length === 0 ? Opt.none() : Opt.some(parse(str, builder));
         return { entry: it, parse: mbParse };
     });
-    const hpEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.hp()).unwrapOr([]));
-    const acEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.ac()).unwrapOr([]));
-    const dmgEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.dmg()).unwrapOr([]));
-    const hitEqs = entriesAndParse.flatMap(it => it.parse.map(e => e.hit()).unwrapOr([]));
-    const actionCount = entriesAndParse.reduce((res, it) => res + it.parse.map(e => e.dmg().length > 0 ? 1 : 0).unwrapOr(0), 0);
-    const divs = {
-        hp: divideDistributable(hpEqs, hp),
-        ac: divideTerm(acEqs, ac),
-        dmg: divideDistributable(dmgEqs, dmg * actionCount),
-        hit: divideTerm(hitEqs, hit),
-    };
-    const entriesToUpdate = [];
-    entriesAndParse.forEach(it => {
+    const usageTags = entriesAndParse.flatMap(it => flattenOpt(it.parse.map(it => it.uses().map(uses => ({
+        uses,
+        hasHp: it.containsHpTags(),
+        hasDmg: it.containsDmgTags(),
+    })))));
+    const [hpTotalUseCount, dmgTotalUseCount, dmgUsageTagCount] = usageTags.reduce((res, c) => {
+        if (c.isSome()) {
+            const { uses, hasHp, hasDmg } = c.unwrap();
+            if (hasHp) {
+                res[0] += uses;
+                res[2] += 1;
+            }
+            if (hasDmg) {
+                res[1] += uses;
+                res[3] += 1;
+            }
+        }
+        return res;
+    }, [0, 0, 0, 0]);
+    const normVecs = usageTags.map(c => c.map(c => [
+        c.uses / hpTotalUseCount,
+        c.uses * dmgUsageTagCount / dmgTotalUseCount
+    ]));
+    for (const it of entriesAndParse) {
         if (it.parse.isNone()) {
             it.entry.remove();
+            continue;
         }
-        else {
-            entriesToUpdate.push(it);
-        }
-    });
-    entriesToUpdate.forEach(it => writeEntryDisp(it.entry, it.parse.unwrap().fmt(divs)));
-    fmtTitle();
+        const parse = it.parse.unwrap();
+        const hpEqs = parse.hp();
+        const acEqs = parse.ac();
+        const dmgEqs = parse.dmg();
+        const hitEqs = parse.hit();
+        acEqs.forEach(eq => eq.fact /= acEqs.length);
+        hitEqs.forEach(eq => eq.fact /= hitEqs.length);
+        const norms = unwrapNullish(normVecs.shift()).unwrapOr([0, 0]);
+        const hpNorm = unwrapNullish(norms[0]);
+        const dmgNorm = unwrapNullish(norms[1]);
+        const divs = {
+            hp: distribute(hpEqs, hp * hpNorm),
+            ac: distribute(acEqs, ac).map(opt => opt.unwrap()),
+            dmg: distribute(dmgEqs, dmg * dmgNorm),
+            hit: distribute(hitEqs, hit).map(opt => opt.unwrap()),
+        };
+        const fmt = it.parse.unwrap().fmt(divs);
+        writeEntryDisp(it.entry, fmt);
+    }
+    rewrapTitle();
 }

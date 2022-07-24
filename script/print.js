@@ -3,10 +3,6 @@ function fmtInlineHd(msg) { return `<span class="inlinehd">${msg}</span>`; }
 function fmtRunIn(msg) { return `<span class="runin">${msg}</span>`; }
 function fmtEmph(msg) { return `<span class="emph">${msg}</span>`; }
 function fmtErr(msg) { return `<span class="err">${msg}</span>`; }
-function fmtToDigits(n, digits) {
-    const splits = `${n}`.split('.');
-    return splits.length > 1 ? `${splits[0]}.${splits[1].substring(0, digits)}` : splits[0];
-}
 class Dice {
     static make(count, size, plus, diff, err) {
         return new Dice(count, size, plus, diff, err);
@@ -66,9 +62,8 @@ class DiceTemplate {
     }
 }
 const POLY_DMG_DICE = [6, 8, 4, 10, 12];
-function printMod(mod) {
-    const intMod = Math.round(mod);
-    return intMod >= 0 ? `+${intMod}` : `${intMod}`;
+function fmtMod(mod) {
+    return mod >= 0 ? `+${mod}` : `${mod}`;
 }
 function cmpAesthetic(a, b) {
     if (a.count > 0 && b.count === 0) {
