@@ -82,18 +82,6 @@ function fmtTitle() {
         return sp;
     }));
 }
-function budget(lv, defMul, playerHitMod, baddieHitMod) {
-    const entry = STATS.reduce((prev, cur) => Math.abs(prev.level - lv) <= Math.abs(cur.level - lv) ? prev : cur);
-    const endurance = entry.hp / PLAYER_HIT * defMul;
-    const playerHit = PLAYER_HIT - playerHitMod;
-    const hp = endurance * playerHit;
-    const ac = entry.ac + (playerHitMod / HIT_INCR);
-    const ferocity = entry.dmg * BADDIE_HIT * (1.0 / defMul);
-    const baddieHit = BADDIE_HIT + baddieHitMod;
-    const dmg = ferocity / baddieHit;
-    const hit = entry.hit + (baddieHitMod / HIT_INCR);
-    return { hp, ac, dmg, hit };
-}
 function refresh() {
     const lvEl = unwrapNullish(document.getElementById("lv"), "no '#lv' pane");
     const { hp, ac, dmg, hit } = budget(level(lvEl), lookupKeywordAndMod('defmul', DEFMUL_MOD), lookupKeywordAndMod('plhit', PLHIT_MOD), lookupKeywordAndMod('bdhit', BDHIT_MOD));
