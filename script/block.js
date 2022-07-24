@@ -127,7 +127,7 @@ function refresh() {
             if (hasHp) {
                 res[0] += uses;
             }
-            if (hasDmg) {
+            if (hasDmg && uses > 0) {
                 res[1] += uses;
                 res[2] += 1;
             }
