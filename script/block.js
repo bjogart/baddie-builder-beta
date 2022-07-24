@@ -72,6 +72,26 @@ function writeEntryDisp(entry, text) {
     const pane = unwrapNullish(entry.querySelector('.disp'), "entry has no '.edit' pane");
     pane.innerHTML = text;
 }
+function appendDistributionErrors(hpUses, dmgUses, entries) {
+    const errors = [
+        { lbl: 'hp', val: hpUses - 1 },
+        { lbl: 'damage', val: dmgUses }
+    ]
+        .filter(it => it.val > MAX_USES)
+        .map(it => new Err('', ` out of ${it.lbl} uses (max. ${MAX_USES})`, ''), '');
+    if (errors.length > 0) {
+        for (let idx = entries.length - 1; idx >= 0; idx--) {
+            const entry = unwrapNullish(entries[idx]);
+            if (entry.parse.isSome()) {
+                const it = entry.parse.unwrap();
+                for (const err of errors) {
+                    it.items.push(err);
+                }
+                return;
+            }
+        }
+    }
+}
 function rewrapTitle() {
     const entry = unwrapNullish(document.getElementById('title'));
     const text = unwrapNullish(entry.textContent);
@@ -116,9 +136,11 @@ function refresh() {
     }, [0, 0, 0]);
     const normVecs = usageTags.map(c => c.map(c => [
         c.uses / hpTotalUseCount,
-        c.uses * dmgUsageTagCount / dmgTotalUseCount
+        c.uses * dmgUsageTagCount / dmgTotalUseCount,
     ]));
+    appendDistributionErrors(hpTotalUseCount, dmgTotalUseCount, entriesAndParse);
     for (const it of entriesAndParse) {
+        const mbNorms = unwrapNullish(normVecs.shift());
         if (it.parse.isNone()) {
             it.entry.remove();
             continue;
@@ -130,7 +152,7 @@ function refresh() {
         const hitEqs = parse.hit();
         acEqs.forEach(eq => eq.fact /= acEqs.length);
         hitEqs.forEach(eq => eq.fact /= hitEqs.length);
-        const norms = unwrapNullish(normVecs.shift()).unwrapOr([0, 0]);
+        const norms = mbNorms.unwrapOr([0, 0]);
         const hpNorm = unwrapNullish(norms[0]);
         const dmgNorm = unwrapNullish(norms[1]);
         const divs = {

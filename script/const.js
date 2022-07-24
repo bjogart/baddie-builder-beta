@@ -56,6 +56,7 @@ const ENTRY_TEXT_DF = '<div class="entry vsp vspb act"><div class="disp" onclick
 const PLAYER_HIT = 0.6;
 const BADDIE_HIT = 0.6;
 const HIT_INCR = 0.05;
+const MAX_USES = 3;
 const STATS = [
     { level: -3, hp: 14.81, ac: 14, dmg: 1.81, hit: 5 },
     { level: -2, hp: 16.23, ac: 14, dmg: 1.98, hit: 5 },
