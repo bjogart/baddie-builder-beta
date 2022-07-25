@@ -7,7 +7,7 @@ function effCtor(gs, as, lbl) {
         const entry = new ConstVal(Opt.some(eq), Opt.none());
         const get = (gs) => gs.effModSum;
         const set = (gs, n) => gs.effModSum -= n;
-        return new Lbl(fmtInlineHd(`${lbl}&nbsp;&#10731;`), '', new ZeroSum(gs, get, set, eq, entry, 'saves'));
+        return new Lbl(fmtInlineHd(`${lbl}&nbsp;&#10731;`), '', new ZeroSum(gs, get, set, eq, entry, 'effective saves'));
     });
 }
 const TAG_PATS = [
@@ -124,7 +124,8 @@ class Item {
     }
     fmt(ds) {
         let seenUsesTag = false;
-        let seenHeader = false;
+        let pastHeader = this.items.findIndex(it => match(it.content(), PUNCT)) === -1;
+        const hdFmts = [];
         const fmts = [];
         const errs = [];
         for (const it of this.items) {
@@ -136,11 +137,9 @@ class Item {
                     seenUsesTag = true;
                 }
             }
-            let fmt = it.fmt(ds);
-            if (!seenHeader) {
-                fmtInlineHd(fmt);
-            }
-            fmts.push(fmt);
+            const fmt = it.fmt(ds);
+            pastHeader ? fmts.push(fmt) : hdFmts.push(fmt);
+            pastHeader ||= match(fmt, PUNCT);
         }
         const containsDistributedVal = this.containsHpTags() || this.containsDmgTags();
         if (seenUsesTag && !containsDistributedVal) {
@@ -150,7 +149,7 @@ class Item {
             errs.push('entry has [hp] or [dmg] tags but no [uses] tag');
         }
         const errorMsgs = errs.length === 0 ? '' : ` ${errs.map(fmtErr).join(ERR_SEP)}`;
-        return `${fmts.join('')}${errorMsgs}`;
+        return `${fmtInlineHd(hdFmts.join(''))}${fmts.join('')}${errorMsgs}`;
     }
     content() { return this.items.map(it => it.content()).join(''); }
     triviaBefore() { return this.items[0]?.triviaBefore() ?? ''; }
@@ -249,17 +248,22 @@ class ZeroSum {
     uses() { return this.entry.uses(); }
     fmt(ds) {
         const sum = this.get(this.gs);
-        let err;
-        if (sum !== 0) {
-            const abs = Math.abs(sum);
-            const pluralS = abs === 1 ? '' : 's';
-            const op = sum > 0 ? 'add' : 'subtract';
-            err = sum === 0 ? '' : fmtErr(`${op} ${abs} point${pluralS} from ${this.obj}`);
+        if (sum === 0) {
+            return this.entry.fmt(ds);
+        }
+        const abs = Math.abs(sum);
+        const pluralS = abs === 1 ? '' : 's';
+        let op;
+        let prepos;
+        if (sum >= 0) {
+            op = 'add';
+            prepos = 'to';
         }
         else {
-            err = '';
+            op = 'subtract';
+            prepos = 'from';
         }
-        return `${this.entry.fmt(ds)}${err}`;
+        return fmtErr(` ${op} ${abs} point${pluralS} ${prepos} ${this.obj}`);
     }
     content() { return 'zerosum'; }
     triviaBefore() { return ''; }

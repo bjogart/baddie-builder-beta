@@ -145,6 +145,7 @@ function refresh() {
             it.entry.remove();
             continue;
         }
+        console.log(it.entry.textContent);
         const parse = it.parse.unwrap();
         const hpEqs = parse.hp();
         const acEqs = parse.ac();

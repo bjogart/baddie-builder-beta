@@ -1,5 +1,5 @@
 html {
-  font-size: min(20px, 2.75vw);
+  font-size: min(20px, 3.2vw);
 }
 
 .block {
@@ -26,18 +26,18 @@ html {
 }
 
 .word {
-  display: inline;
+  display: inline-block;
 }
 
 .word + .word {
-  margin-left: 0.4rem;
+  margin-left: 0.345rem;
 }
 
 .inlineblock {
   display: inline-block;
 }
 
-.valignbottom {
+.titlewrapbottom {
   display: flex;
   flex-flow: row-reverse wrap-reverse;
   justify-content: left;
@@ -45,6 +45,19 @@ html {
 
 .hide {
   display: none;
+}
+
+.flexmid {
+  display: flex;
+  justify-content: space-around;
+}
+
+.textm {
+  text-align: center;
+}
+
+.textr {
+  text-align: right;
 }
 
 html {
@@ -80,102 +93,61 @@ html {
   font-weight: bold;
 }
 
-.textr {
-  text-align: right;
-}
-
-.rnd {
-  border-radius: 15%/50%;
-}
-
-.lrnd {
-  padding: 0 0.17rem 0 0.345rem;
-  border-top-left-radius: 100% 50%;
-  border-bottom-left-radius: 100% 50%;
-}
-
-.rrnd {
-  padding: 0 0.345rem 0 0.17rem;
-  border-top-right-radius: 100% 50%;
-  border-bottom-right-radius: 100% 50%;
+.err {
+  color: crimson;
+  font-weight: bold;
 }
 
 .sep {
   border-bottom: 1px solid #111;
 }
 
-.err {
-  color: crimson;
-}
-
-.btncol {
+.buttoncol {
   background-color: #666;
   color: #fff;
   user-select: none;
-}
-
-.btnhover:hover {
-  border-color: #111;
-  background-color: #111;
-}
-
-.btnshape {
-  display: inline-block;
-  padding: 0 0.345rem 0 0.345rem;
+  padding: 0 0.5rem 0 0.5rem;
   text-align: center;
 }
 
-.btnshape:last-child {
-  padding-left: 0.345rem;
+.buttonsel {
+  cursor: pointer;
 }
 
-.lvbtnwidth {
+.buttonsel:hover {
+  background-color: #111;
+}
+
+.lvbuttonwidth {
   width: 4rem;
 }
 
-.kwbtnwidth {
+.keywordbuttonwidth {
   width: 4.75rem;
 }
 
-.contentwidth {
-  width: fit-content;
+.smallbr {
+  margin-top: 0.25rem;
 }
 
-.maxbtnwidth {
-  width: 100%;
+.medbr {
+  margin-top: 0.5rem;
+}
+
+.bigbr {
+  margin-top: 1.5rem;
+}
+
+.smallpadbottom {
+  padding-bottom: 0.25rem;
 }
 
 .entry > .disp:hover:not(.hide) {
   outline: 0.5px solid #666;
 }
 
-.midtext {
-  text-align: center;
-}
-
-.vsp {
-  padding-top: 0.25rem;
-}
-
-.vsptop {
-  padding-top: 1rem;
-}
-
-.vspl {
-  padding-top: 0.5rem;
-}
-
-.vspb {
-  padding-bottom: 0.25rem;
-}
-
-.hsp + .hsp {
-  margin-left: 0.345rem;
-}
-
-.flexmid {
-  display: flex;
-  justify-content: space-around;
+h2 {
+  margin-top: 7rem;
 }
 
 textarea {
