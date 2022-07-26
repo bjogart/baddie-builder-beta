@@ -194,12 +194,13 @@ function loadEntries() {
         }
         const actionPane = unwrapNullish(document.getElementById('actions'), "no '#actions' pane");
         for (const c of actionPane.children) {
-            if (c.id.length === 0)
+            if (c.classList.contains('entry'))
                 actionPane.removeChild(c);
         }
         const actions = obj['actions'] ?? [];
+        const button = unwrapNullish(actionPane.lastChild);
         for (const a of actions) {
-            actionPane.appendChild(newEntry(a));
+            actionPane.insertBefore(newEntry(a), button);
         }
         refresh();
     });
