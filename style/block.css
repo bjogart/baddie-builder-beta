@@ -25,6 +25,10 @@ html {
   flex: none;
 }
 
+.flexgrow {
+  flex: 1 1 auto;
+}
+
 .word {
   display: inline-block;
 }

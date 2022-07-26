@@ -19,7 +19,8 @@ const TAG_PATS = [
         ]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
             if (temp.size.isNone()) {
-                temp.size = Opt.some(lookupKeywordAndMod('size', SIZE_HD));
+                const kw = lookupKeyword('size');
+                temp.size = Opt.some(unwrapNullish(SIZE_HD[kw]));
             }
             const lbl = as.get('heal') ? '' : fmtInlineHd('hp&nbsp;');
             const emph = as.get('heal') !== undefined;
