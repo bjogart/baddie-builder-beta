@@ -33,7 +33,7 @@ function cycleKeywords(it, cycle) {
 }
 function newEntry(initialText = '[uses: 1] Slam. [hit]; [dmg] bludgeoning.') {
     const entry = Object.assign(document.createElement('div'), {
-        innerHTML: `<div class="entry medbr act">
+        innerHTML: `<div class="entry medbr action">
 <div class="disp" onclick="toggleEntry(this)">
 </div><textarea class="edit hide" onblur="toggleEntry(this)" autocomplete="off">${initialText}</textarea>
 </div>`
@@ -126,9 +126,10 @@ function rewrapTitle() {
         return sp;
     }));
 }
-function saveEntries() {
+function saveEntries(button) {
+    let err = false;
     const data = Array.from(entries())
-        .map(it => ({ id: it.id, text: entryMarkupTextContent(it) }))
+        .map(it => ({ id: it.id, classes: it.classList, text: entryMarkupTextContent(it) }))
         .filter(it => it.text.length > 0);
     const lv = unwrapNullish(document.getElementById('lv')).textContent;
     if (lv !== null) {
@@ -156,54 +157,72 @@ function saveEntries() {
         data.push({ id: 'defmul', text: defmul });
     }
     ;
-    const obj = { version: FILE_VERSION, actions: [] };
+    const obj = new BlockJson(FILE_VERSION);
     for (const it of data) {
-        if (it.id.length > 0) {
-            obj[it.id] = it.text;
+        if (it.id in obj) {
+            obj[it.id] = Opt.some(it.text);
         }
-        else {
+        else if (it.classes && it.classes.contains('action')) {
             obj.actions.push(it.text);
         }
+        else {
+            console.error(`cannot save property: {id:${it.id},text:${it.text}}`);
+            err ||= true;
+        }
+    }
+    if (err) {
+        button.classList.add('buttonerr');
+        return;
     }
     const pane = unwrapNullish(document.getElementById('title')?.querySelector('.edit'));
     const title = pane.value;
     const filename = titleToFileName(title);
     downloadJson(obj, filename);
 }
-function loadEntries() {
+function loadEntries(button) {
     loadJson(obj => {
-        if (!('version' in obj) || obj['version'] !== FILE_VERSION) {
-            throw `invalid version '${obj['version']}'(expected '${FILE_VERSION}')`;
+        let err = Opt.none();
+        if ('err' in obj) {
+            err = Opt.some(obj.err);
         }
-        const lv = obj['lv'] ?? LEVEL_1;
-        unwrapNullish(document.getElementById('lv')).textContent = lv;
-        const type = obj['type'] ?? CREATURE_TYPE_HUMANOID;
-        unwrapNullish(document.getElementById('type')?.querySelector('.edit')).value = type;
-        const size = obj['size'] ?? SIZE_MEDIUM;
-        unwrapNullish(document.getElementById('size')?.firstChild).textContent = size;
-        const bdhit = obj['bdhit'] ?? BDHIT_MID;
-        unwrapNullish(document.getElementById('bdhit')?.firstChild).textContent = bdhit;
-        const plhit = obj['plhit'] ?? PLHIT_MID;
-        unwrapNullish(document.getElementById('plhit')?.firstChild).textContent = plhit;
-        const defmul = obj['defmul'] ?? DEFMUL_MID;
-        unwrapNullish(document.getElementById('defmul')?.firstChild).textContent = defmul;
-        const namedEntries = ['title', 'hp', 'ac', 'mv', 'str', 'dex', 'con', 'int', 'wis', 'cha'];
-        for (const id of namedEntries) {
-            const edit = unwrapNullish(document.getElementById(id)?.querySelector('.edit'), `no '${id}' pane, or invalid substructure`);
-            edit.value = obj[id] ?? '';
+        else {
+            const json = obj.val;
+            if (json.version !== FILE_VERSION) {
+                err = Opt.some(`invalid version '${json['version']}'(expected '${FILE_VERSION}')`);
+            }
+            else {
+                const lv = json.lv.unwrapOr(LEVEL_1);
+                unwrapNullish(document.getElementById('lv')).textContent = lv;
+                const type = json.type.unwrapOr(CREATURE_TYPE_HUMANOID);
+                unwrapNullish(document.getElementById('type')?.querySelector('.edit')).value = type;
+                const size = json.size.unwrapOr(SIZE_MEDIUM);
+                unwrapNullish(document.getElementById('size')?.firstChild).textContent = size;
+                const bdhit = json.bdhit.unwrapOr(BDHIT_MID);
+                unwrapNullish(document.getElementById('bdhit')?.firstChild).textContent = bdhit;
+                const plhit = json.plhit.unwrapOr(PLHIT_MID);
+                unwrapNullish(document.getElementById('plhit')?.firstChild).textContent = plhit;
+                const defmul = json.defmul.unwrapOr(DEFMUL_MID);
+                unwrapNullish(document.getElementById('defmul')?.firstChild).textContent = defmul;
+                const namedEntries = ['title', 'hp', 'ac', 'mv', 'str', 'dex', 'con', 'int', 'wis', 'cha'];
+                for (const id of namedEntries) {
+                    const edit = unwrapNullish(document.getElementById(id)?.querySelector('.edit'), `no '${id}' pane, or invalid substructure`);
+                    edit.value = json[id].unwrapOr('');
+                }
+                const actionPane = unwrapNullish(document.getElementById('actions'), "no '#actions' pane");
+                actionPane.replaceChildren(unwrapNullish(actionPane.firstChild), ...json.actions.map(newEntry), unwrapNullish(actionPane.lastChild));
+            }
+            refresh();
         }
-        const actionPane = unwrapNullish(document.getElementById('actions'), "no '#actions' pane");
-        for (const c of actionPane.children) {
-            if (c.classList.contains('entry'))
-                actionPane.removeChild(c);
+        if (err.isSome()) {
+            console.error(err.unwrap());
+            button.classList.add('buttonerr');
         }
-        const actions = obj['actions'] ?? [];
-        const button = unwrapNullish(actionPane.lastChild);
-        for (const a of actions) {
-            actionPane.insertBefore(newEntry(a), button);
-        }
-        refresh();
     });
+}
+function resetButtonErrors() {
+    for (const it of document.getElementsByClassName('buttonerr')) {
+        it.classList.remove('buttonerr');
+    }
 }
 function refresh() {
     const lvEl = unwrapNullish(document.getElementById("lv"), "no '#lv' pane");
@@ -245,4 +264,5 @@ function refresh() {
         writeEntryDisp(it.entry, fmt);
     }
     rewrapTitle();
+    resetButtonErrors();
 }

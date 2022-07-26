@@ -56,6 +56,10 @@ html {
   justify-content: space-around;
 }
 
+.textl {
+  text-align: left;
+}
+
 .textm {
   text-align: center;
 }
@@ -68,6 +72,8 @@ html {
   font-family: "DM Sans", sans-serif;
   line-height: 1.5em;
   color: #111;
+  font-variant-numeric: tabular-nums;
+  hyphens: auto;
 }
 
 .h {
@@ -107,11 +113,16 @@ html {
 }
 
 .buttoncol {
-  background-color: #666;
+  background-color: #111;
   color: #fff;
+  opacity: 65%;
   user-select: none;
   padding: 0 0.5rem 0 0.5rem;
   text-align: center;
+}
+
+.buttonerr {
+  background-color: crimson;
 }
 
 .buttonsel {
@@ -119,7 +130,7 @@ html {
 }
 
 .buttonsel:hover {
-  background-color: #111;
+  opacity: 100%;
 }
 
 .lvbuttonwidth {
@@ -147,22 +158,37 @@ html {
 }
 
 .entry > .disp:hover:not(.hide) {
-  outline: 0.5px solid #666;
+  outline: 0.5px solid #111;
 }
 
 h2 {
-  margin-top: 7rem;
+  margin-top: 4rem;
+}
+
+table {
+  font-size: 0.85rem;
+  line-height: 1.35rem;
+  border-collapse: collapse;
+}
+
+th {
+  font-weight: normal;
+}
+
+td {
+  padding: 0 0.5rem 0 0.5rem;
 }
 
 textarea {
   width: 100%;
-  font-family: "DM Sans", sans-serif;
-  line-height: 1.5em;
-  color: #111;
-  font-size: 1rem;
-  background-color: #fff;
-  outline: none;
-  border: 0.5px solid #666;
   resize: none;
+  margin: 0;
+  padding: 0;
+  background-color: #fff;
   color: #111;
+  border: none;
+  outline: 0.5px solid #111;
+  font-family: "DM Sans", sans-serif;
+  font-size: 1rem;
+  line-height: 1.5em;
 }

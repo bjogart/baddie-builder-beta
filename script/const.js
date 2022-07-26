@@ -69,8 +69,8 @@ const STATS = [
     { level: 1, hp: 21.33, ac: 14, dmg: 2.6, hit: 5 },
     { level: 2, hp: 22.53, ac: 14, dmg: 4.52, hit: 5 },
     { level: 3, hp: 32.39, ac: 15, dmg: 6.43, hit: 6 },
-    { level: 4, hp: 34.74, ac: 16, dmg: 8.34, hit: 7 },
-    { level: 5, hp: 57.5, ac: 17, dmg: 10.25, hit: 8 },
+    { level: 4, hp: 40.43, ac: 16, dmg: 8.34, hit: 7 },
+    { level: 5, hp: 51.81, ac: 17, dmg: 10.25, hit: 8 },
     { level: 6, hp: 58.6, ac: 17, dmg: 12.17, hit: 8 },
     { level: 7, hp: 60.31, ac: 18, dmg: 14.08, hit: 8 },
     { level: 8, hp: 63.01, ac: 19, dmg: 16.16, hit: 9 },
@@ -81,8 +81,8 @@ const STATS = [
     { level: 13, hp: 91.47, ac: 21, dmg: 29.72, hit: 12 },
     { level: 14, hp: 99.63, ac: 21, dmg: 31.95, hit: 12 },
     { level: 15, hp: 107.73, ac: 22, dmg: 34.18, hit: 13 },
-    { level: 16, hp: 109.53, ac: 22, dmg: 40.52, hit: 13 },
-    { level: 17, hp: 148.94, ac: 23, dmg: 43.01, hit: 14 },
+    { level: 16, hp: 122.67, ac: 22, dmg: 40.52, hit: 13 },
+    { level: 17, hp: 139.09, ac: 23, dmg: 43.01, hit: 14 },
     { level: 18, hp: 150.08, ac: 23, dmg: 45.5, hit: 14 },
     { level: 19, hp: 151.22, ac: 23, dmg: 52.05, hit: 14 },
     { level: 20, hp: 174.54, ac: 23, dmg: 55.61, hit: 14 },
@@ -104,3 +104,151 @@ const DICE_FMT_MAX_ERR_THRES = 3;
 const FMT_DIGITS = 1;
 const METRIC_PRIME = "<em>'</em>";
 const PUNCT = /[.?!:;,]+/;
+class BlockJson {
+    static fromProperties(version, params) {
+        const block = new BlockJson(version);
+        if (params.lv !== undefined) {
+            block.lv = Opt.some(params.lv);
+        }
+        if (params.type !== undefined) {
+            block.type = Opt.some(params.type);
+        }
+        if (params.size !== undefined) {
+            block.size = Opt.some(params.size);
+        }
+        if (params.bdhit !== undefined) {
+            block.bdhit = Opt.some(params.bdhit);
+        }
+        if (params.plhit !== undefined) {
+            block.plhit = Opt.some(params.plhit);
+        }
+        if (params.defmul !== undefined) {
+            block.defmul = Opt.some(params.defmul);
+        }
+        if (params.title !== undefined) {
+            block.title = Opt.some(params.title);
+        }
+        if (params.hp !== undefined) {
+            block.hp = Opt.some(params.hp);
+        }
+        if (params.ac !== undefined) {
+            block.ac = Opt.some(params.ac);
+        }
+        if (params.mv !== undefined) {
+            block.mv = Opt.some(params.mv);
+        }
+        if (params.str !== undefined) {
+            block.str = Opt.some(params.str);
+        }
+        if (params.dex !== undefined) {
+            block.dex = Opt.some(params.dex);
+        }
+        if (params.con !== undefined) {
+            block.con = Opt.some(params.con);
+        }
+        if (params.int !== undefined) {
+            block.int = Opt.some(params.int);
+        }
+        if (params.wis !== undefined) {
+            block.wis = Opt.some(params.wis);
+        }
+        if (params.cha !== undefined) {
+            block.cha = Opt.some(params.cha);
+        }
+        if (params.actions !== undefined) {
+            block.actions = params.actions;
+        }
+        return block;
+    }
+    lv;
+    type;
+    size;
+    bdhit;
+    plhit;
+    defmul;
+    title;
+    hp;
+    ac;
+    mv;
+    str;
+    dex;
+    con;
+    int;
+    wis;
+    cha;
+    actions;
+    version;
+    constructor(version) {
+        this.lv = Opt.none();
+        this.type = Opt.none();
+        this.size = Opt.none();
+        this.bdhit = Opt.none();
+        this.plhit = Opt.none();
+        this.defmul = Opt.none();
+        this.title = Opt.none();
+        this.hp = Opt.none();
+        this.ac = Opt.none();
+        this.mv = Opt.none();
+        this.str = Opt.none();
+        this.dex = Opt.none();
+        this.con = Opt.none();
+        this.int = Opt.none();
+        this.wis = Opt.none();
+        this.cha = Opt.none();
+        this.actions = [];
+        this.version = version;
+    }
+    json() {
+        const obj = { version: this.version, actions: this.actions };
+        if (this.lv.isSome()) {
+            obj['lv'] = this.lv.unwrap();
+        }
+        if (this.type.isSome()) {
+            obj['type'] = this.type.unwrap();
+        }
+        if (this.size.isSome()) {
+            obj['size'] = this.size.unwrap();
+        }
+        if (this.bdhit.isSome()) {
+            obj['bdhit'] = this.bdhit.unwrap();
+        }
+        if (this.plhit.isSome()) {
+            obj['plhit'] = this.plhit.unwrap();
+        }
+        if (this.defmul.isSome()) {
+            obj['defmul'] = this.defmul.unwrap();
+        }
+        if (this.title.isSome()) {
+            obj['title'] = this.title.unwrap();
+        }
+        if (this.hp.isSome()) {
+            obj['hp'] = this.hp.unwrap();
+        }
+        if (this.ac.isSome()) {
+            obj['ac'] = this.ac.unwrap();
+        }
+        if (this.mv.isSome()) {
+            obj['mv'] = this.mv.unwrap();
+        }
+        if (this.str.isSome()) {
+            obj['str'] = this.str.unwrap();
+        }
+        if (this.dex.isSome()) {
+            obj['dex'] = this.dex.unwrap();
+        }
+        if (this.con.isSome()) {
+            obj['con'] = this.con.unwrap();
+        }
+        if (this.int.isSome()) {
+            obj['int'] = this.int.unwrap();
+        }
+        if (this.wis.isSome()) {
+            obj['wis'] = this.wis.unwrap();
+        }
+        if (this.cha.isSome()) {
+            obj['cha'] = this.cha.unwrap();
+        }
+        return JSON.stringify(obj);
+    }
+}
+;

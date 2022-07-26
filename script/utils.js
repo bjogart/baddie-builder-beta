@@ -16,7 +16,7 @@ function titleToFileName(title) {
     return `${name}${BLOCK_FILE_EXT}`;
 }
 function downloadJson(obj, filename) {
-    const data = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(obj))}`;
+    const data = `data:text/json;charset=utf-8,${encodeURIComponent(obj.json())}`;
     const downloader = document.createElement('a');
     downloader.setAttribute('href', data);
     downloader.setAttribute('download', filename);
@@ -25,7 +25,7 @@ function downloadJson(obj, filename) {
     downloader.click();
     downloader.remove();
 }
-function loadJson(callback) {
+function loadJson(f) {
     const uploader = document.createElement('input');
     uploader.classList.add('hide');
     uploader.setAttribute('type', 'file');
@@ -35,12 +35,27 @@ function loadJson(callback) {
         const file = unwrapNullish(unwrapNullish(uploader.files)[0]);
         const reader = new FileReader();
         reader.onloadend = () => {
-            const res = reader.result;
-            if (res === null || typeof res !== 'string') {
-                throw `invalid file: ${res}`;
+            const file = reader.result;
+            let res;
+            if (file === null || typeof file !== 'string') {
+                res = { err: `invalid file: ${file}` };
             }
-            const obj = JSON.parse(res.toString());
-            callback(obj);
+            else {
+                let json;
+                try {
+                    json = JSON.parse(file);
+                }
+                catch (e) {
+                    f({ err: e });
+                    return;
+                }
+                if (!('version' in json)) {
+                    f({ err: `no 'version' property in file` });
+                    return;
+                }
+                res = { val: BlockJson.fromProperties(json.version, json) };
+            }
+            f(res);
         };
         reader.readAsText(file);
     };
