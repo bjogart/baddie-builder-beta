@@ -24,7 +24,8 @@ const TAG_PATS = [
                 temp.size = Opt.some(unwrapNullish(SIZE_HD[gs.size]));
             }
             const lbl = as.get('heal') ? '' : fmtTagHd('hp&nbsp;');
-            return new Lbl(lbl, '', new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, as.has('heal')));
+            const emph = as.get('heal') !== undefined;
+            return new Lbl(lbl, '', new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, emph));
         })),
     },
     {
@@ -326,12 +327,12 @@ class HpOrDmgVal {
     _hp;
     _dmg;
     dTemplate;
-    bold;
-    constructor(hp, dmg, dTemp, bold) {
+    emph;
+    constructor(hp, dmg, dTemp, emph) {
         this._hp = hp;
         this._dmg = dmg;
         this.dTemplate = dTemp;
-        this.bold = bold;
+        this.emph = emph;
     }
     ty() { return 'hpOrDmgVal'; }
     containsErrors() { return false; }
@@ -360,7 +361,7 @@ class HpOrDmgVal {
             approxErr = '';
         }
         const res = `${fmt}${approxErr}`;
-        return this.bold ? fmtBold(res) : res;
+        return this.emph ? fmtBold(res) : res;
     }
     content() { return 'dmg'; }
     triviaBefore() { return ''; }
