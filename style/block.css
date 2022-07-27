@@ -153,6 +153,10 @@ html {
   margin-top: 1.5rem;
 }
 
+.secbr {
+  margin-top: 4rem;
+}
+
 .smallpadbottom {
   padding-bottom: 0.25rem;
 }
@@ -162,7 +166,12 @@ html {
 }
 
 h2 {
-  margin-top: 4rem;
+  font-family: "DM Serif Display";
+}
+
+ul {
+  list-style-type: circle;
+  padding-left: 1rem;
 }
 
 table {

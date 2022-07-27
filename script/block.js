@@ -226,8 +226,9 @@ function resetButtonErrors() {
 }
 function refresh() {
     const lvEl = unwrapNullish(document.getElementById("lv"), "no '#lv' pane");
+    const lv = level(lvEl);
     const { hp, ac, dmg, hit } = budget(level(lvEl), unwrapNullish(DEFMUL_MOD[lookupKeyword('defmul')]), unwrapNullish(PLHIT_MOD[lookupKeyword('plhit')]), unwrapNullish(BDHIT_MOD[lookupKeyword('bdhit')]));
-    const builder = new EntryBuilder();
+    const builder = new EntryBuilder(lv, lookupKeyword('size'));
     const entryElems = entries();
     const entriesAndParse = Array.from(entryElems).map(it => {
         const str = entryMarkupTextContent(it);

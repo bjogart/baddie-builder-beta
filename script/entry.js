@@ -4,10 +4,12 @@ function dispatchOrErr(v, ctor) {
 }
 function effCtor(gs, as, lbl) {
     return dispatchOrErr(Eq.fromArgs(as), eq => {
-        const entry = new ConstVal(Opt.some(eq), Opt.none());
         const get = (gs) => gs.effModSum;
         const set = (gs, n) => gs.effModSum -= n;
-        return new Lbl(fmtInlineHd(`${lbl}&nbsp;&#10731;`), '', new ZeroSum(gs, get, set, eq, entry, 'effective saves'));
+        const prof = (as.has('prof') ? Opt.some(-gs.prof) : Opt.some(0)).map(p => p - 14);
+        const val = new DefVal(eq, prof);
+        const entry = new ZeroSum(gs, get, set, eq, val, 'effective saves');
+        return new Lbl(`${fmtInlineHd(lbl)}&nbsp;`, '', entry);
     });
 }
 const TAG_PATS = [
@@ -17,14 +19,13 @@ const TAG_PATS = [
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]], ['heal', []],
         ]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
+        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
             if (temp.size.isNone()) {
-                const kw = lookupKeyword('size');
-                temp.size = Opt.some(unwrapNullish(SIZE_HD[kw]));
+                temp.size = Opt.some(unwrapNullish(SIZE_HD[gs.size]));
             }
             const lbl = as.get('heal') ? '' : fmtInlineHd('hp&nbsp;');
             const emph = as.get('heal') !== undefined;
-            return new Lbl(lbl, '', new DiceVal(Opt.some(eq), Opt.none(), temp, emph));
+            return new Lbl(lbl, '', new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, emph));
         })),
     },
     {
@@ -33,14 +34,14 @@ const TAG_PATS = [
             ['dmg', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
         ]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => new DiceVal(Opt.none(), Opt.some(eq), temp, true))),
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => new HpOrDmgVal(Opt.none(), Opt.some(eq), temp, true))),
     },
     {
         name: 'hit',
         argPats: new Map([['hit', []], ['vs', [IDENT]], ['plus', [NUM]], ['minus', [NUM]]]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => {
             const target = (as.get('vs') ?? Opt.none()).map(v => v.s).unwrapOr('ac').toLowerCase();
-            return new Lbl('', ` vs. ${fmtInlineHd(target)}`, new Mod(Opt.none(), Opt.some(eq), true));
+            return new Lbl('', ` vs. ${fmtInlineHd(target)}`, new AcOrHitMod(Opt.none(), Opt.some(eq), true));
         }),
     },
     {
@@ -57,7 +58,7 @@ const TAG_PATS = [
     {
         name: 'ac',
         argPats: new Map([['ac', []], ['plus', [NUM]], ['minus', [NUM]]]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => new Lbl(fmtInlineHd('ac&nbsp;'), '', new ConstVal(Opt.some(eq), Opt.none()))),
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => new Lbl(fmtInlineHd('ac&nbsp;'), '', new DefVal(eq, Opt.none()))),
     },
     {
         name: 'mv',
@@ -69,32 +70,32 @@ const TAG_PATS = [
     },
     {
         name: 'str',
-        argPats: new Map([['str', []], ['plus', [NUM]], ['minus', [NUM]]]),
+        argPats: new Map([['str', []], ['plus', [NUM]], ['minus', [NUM]], ['prof', []]]),
         ctor: (gs, as) => effCtor(gs, as, 'str'),
     },
     {
         name: 'dex',
-        argPats: new Map([['dex', []], ['plus', [NUM]], ['minus', [NUM]]]),
+        argPats: new Map([['dex', []], ['plus', [NUM]], ['minus', [NUM]], ['prof', []]]),
         ctor: (gs, as) => effCtor(gs, as, 'dex'),
     },
     {
         name: 'con',
-        argPats: new Map([['con', []], ['plus', [NUM]], ['minus', [NUM]]]),
+        argPats: new Map([['con', []], ['plus', [NUM]], ['minus', [NUM]], ['prof', []]]),
         ctor: (gs, as) => effCtor(gs, as, 'con'),
     },
     {
         name: 'int',
-        argPats: new Map([['int', []], ['plus', [NUM]], ['minus', [NUM]]]),
+        argPats: new Map([['int', []], ['plus', [NUM]], ['minus', [NUM]], ['prof', []]]),
         ctor: (gs, as) => effCtor(gs, as, 'int'),
     },
     {
         name: 'wis',
-        argPats: new Map([['wis', []], ['plus', [NUM]], ['minus', [NUM]]]),
+        argPats: new Map([['wis', []], ['plus', [NUM]], ['minus', [NUM]], ['prof', []]]),
         ctor: (gs, as) => effCtor(gs, as, 'wis'),
     },
     {
         name: 'cha',
-        argPats: new Map([['cha', []], ['plus', [NUM]], ['minus', [NUM]]]),
+        argPats: new Map([['cha', []], ['plus', [NUM]], ['minus', [NUM]], ['prof', []]]),
         ctor: (gs, as) => effCtor(gs, as, 'cha'),
     },
     {
@@ -270,29 +271,31 @@ class ZeroSum {
     triviaBefore() { return ''; }
     triviaAfter() { return ''; }
 }
-class ConstVal {
+class DefVal {
     _ac;
-    _hit;
-    constructor(ac, hit) { this._ac = ac; this._hit = hit; }
-    ty() { return 'const'; }
+    modAdj;
+    constructor(eff, prof) { this._ac = eff; this.modAdj = prof; }
+    ty() { return 'effVal'; }
     containsErrors() { return false; }
     containsHpTags() { return false; }
     containsDmgTags() { return false; }
     hp() { return []; }
-    ac() { return this._ac.toList(); }
+    ac() { return [this._ac]; }
     dmg() { return []; }
-    hit() { return this._hit.toList(); }
+    hit() { return []; }
     uses() { return Opt.none(); }
     fmt(ds) {
-        const div = this._ac.isSome() ? ds.ac : ds.hit;
-        const val = unwrapNullish(div.shift());
-        return `${val}`;
+        const eff = unwrapNullish(ds.ac.shift());
+        const mod = this.modAdj.isSome()
+            ? `${fmtMod(eff + this.modAdj.unwrap())}&nbsp;&#10731;`
+            : '';
+        return `${mod}${eff}`;
     }
-    content() { return 'const'; }
+    content() { return 'effVal'; }
     triviaBefore() { return ''; }
     triviaAfter() { return ''; }
 }
-class Mod {
+class AcOrHitMod {
     _ac;
     _hit;
     emph;
@@ -301,7 +304,7 @@ class Mod {
         this._hit = hit;
         this.emph = emph;
     }
-    ty() { return 'mod'; }
+    ty() { return 'acOrHitMod'; }
     containsErrors() { return false; }
     containsHpTags() { return false; }
     containsDmgTags() { return false; }
@@ -320,7 +323,7 @@ class Mod {
     triviaBefore() { return ''; }
     triviaAfter() { return ''; }
 }
-class DiceVal {
+class HpOrDmgVal {
     _hp;
     _dmg;
     dTemplate;
@@ -331,7 +334,7 @@ class DiceVal {
         this.dTemplate = dTemp;
         this.emph = emph;
     }
-    ty() { return 'diceval'; }
+    ty() { return 'hpOrDmgVal'; }
     containsErrors() { return false; }
     containsHpTags() { return this._hp.isSome(); }
     containsDmgTags() { return this._dmg.isSome(); }
@@ -596,8 +599,12 @@ function errTag(l, msg, r) {
 }
 class EntryBuilder {
     globals;
-    constructor() {
-        this.globals = { effModSum: 0 };
+    constructor(lv, size) {
+        this.globals = {
+            effModSum: 0,
+            prof: Math.min(6, Math.max(0, Math.ceil(lv / 4) + 1)),
+            size,
+        };
     }
     tag(l, args, r) {
         if (args.length === 0) {
