@@ -2,6 +2,7 @@
 function fmtTagHd(msg) { return `<span class="taghd">${msg}</span>`; }
 function fmtBold(msg) { return `<strong>${msg}</strong>`; }
 function fmtErr(msg) { return `<span class="err">${msg}</span>`; }
+function fmtMod(mod) { return mod >= 0 ? `+${mod}` : `&minus;${Math.abs(mod)}`; }
 class Dice {
     static make(count, size, plus, diff, err) {
         return new Dice(count, size, plus, diff, err);
@@ -61,9 +62,6 @@ class DiceTemplate {
     }
 }
 const POLY_DMG_DICE = [6, 8, 4, 10, 12];
-function fmtMod(mod) {
-    return mod >= 0 ? `+${mod}` : `${mod}`;
-}
 function cmpAesthetic(a, b) {
     if (a.count > 0 && b.count === 0) {
         return -1;
