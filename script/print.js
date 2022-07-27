@@ -1,7 +1,6 @@
 "use strict";
-function fmtInlineHd(msg) { return `<span class="inlinehd">${msg}</span>`; }
-function fmtRunIn(msg) { return `<span class="runin">${msg}</span>`; }
-function fmtEmph(msg) { return `<span class="emph">${msg}</span>`; }
+function fmtTagHd(msg) { return `<span class="taghd">${msg}</span>`; }
+function fmtBold(msg) { return `<strong>${msg}</strong>`; }
 function fmtErr(msg) { return `<span class="err">${msg}</span>`; }
 class Dice {
     static make(count, size, plus, diff, err) {

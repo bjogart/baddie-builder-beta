@@ -100,9 +100,10 @@ const IDENT = 'name';
 const NUM = 'number';
 const MISC = 'misc';
 const ERR_SEP = '; ';
+const METRIC_PRIME = "<em>'</em>";
+const EFF_SHIELD = '<img class="shieldicon" src="./res/shield.svg"/>';
 const DICE_FMT_MAX_ERR_THRES = 3;
 const FMT_DIGITS = 1;
-const METRIC_PRIME = "<em>'</em>";
 const PUNCT = /[.?!:;,]+/;
 class BlockJson {
     static fromProperties(version, params) {

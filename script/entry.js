@@ -9,7 +9,7 @@ function effCtor(gs, as, lbl) {
         const prof = (as.has('prof') ? Opt.some(-gs.prof) : Opt.some(0)).map(p => p - 14);
         const val = new DefVal(eq, prof);
         const entry = new ZeroSum(gs, get, set, eq, val, 'effective saves');
-        return new Lbl(`${fmtInlineHd(lbl)}&nbsp;`, '', entry);
+        return new Lbl(`${fmtTagHd(lbl)}&nbsp;`, '', entry);
     });
 }
 const TAG_PATS = [
@@ -23,9 +23,8 @@ const TAG_PATS = [
             if (temp.size.isNone()) {
                 temp.size = Opt.some(unwrapNullish(SIZE_HD[gs.size]));
             }
-            const lbl = as.get('heal') ? '' : fmtInlineHd('hp&nbsp;');
-            const emph = as.get('heal') !== undefined;
-            return new Lbl(lbl, '', new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, emph));
+            const lbl = as.get('heal') ? '' : fmtTagHd('hp&nbsp;');
+            return new Lbl(lbl, '', new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, as.has('heal')));
         })),
     },
     {
@@ -41,7 +40,7 @@ const TAG_PATS = [
         argPats: new Map([['hit', []], ['vs', [IDENT]], ['plus', [NUM]], ['minus', [NUM]]]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => {
             const target = (as.get('vs') ?? Opt.none()).map(v => v.s).unwrapOr('ac').toLowerCase();
-            return new Lbl('', ` vs. ${fmtInlineHd(target)}`, new AcOrHitMod(Opt.none(), Opt.some(eq), true));
+            return new Lbl('', ` vs. ${fmtTagHd(target)}`, new AcOrHitMod(Opt.none(), Opt.some(eq), true));
         }),
     },
     {
@@ -58,7 +57,7 @@ const TAG_PATS = [
     {
         name: 'ac',
         argPats: new Map([['ac', []], ['plus', [NUM]], ['minus', [NUM]]]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => new Lbl(fmtInlineHd('ac&nbsp;'), '', new DefVal(eq, Opt.none()))),
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => new Lbl(fmtTagHd('ac&nbsp;'), '', new DefVal(eq, Opt.none()))),
     },
     {
         name: 'mv',
@@ -66,7 +65,7 @@ const TAG_PATS = [
             ['mv', []], ['walk', [NUM]], ['climb', [NUM]], ['fly', [NUM]],
             ['swim', [NUM]]
         ]),
-        ctor: (_gs, as) => new Lbl(fmtInlineHd('mv&nbsp;'), '', new Mv(as)),
+        ctor: (_gs, as) => new Lbl(fmtTagHd('mv&nbsp;'), '', new Mv(as)),
     },
     {
         name: 'str',
@@ -151,7 +150,7 @@ class Item {
             errs.push('entry has [hp] or [dmg] tags but no [uses] tag');
         }
         const errorMsgs = errs.length === 0 ? '' : ` ${errs.map(fmtErr).join(ERR_SEP)}`;
-        return `${fmtInlineHd(hdFmts.join(''))}${fmts.join('')}${errorMsgs}`;
+        return `${fmtTagHd(hdFmts.join(''))}${fmts.join('')}${errorMsgs}`;
     }
     content() { return this.items.map(it => it.content()).join(''); }
     triviaBefore() { return this.items[0]?.triviaBefore() ?? ''; }
@@ -275,7 +274,7 @@ class DefVal {
     _ac;
     modAdj;
     constructor(eff, prof) { this._ac = eff; this.modAdj = prof; }
-    ty() { return 'effVal'; }
+    ty() { return 'defVal'; }
     containsErrors() { return false; }
     containsHpTags() { return false; }
     containsDmgTags() { return false; }
@@ -287,11 +286,11 @@ class DefVal {
     fmt(ds) {
         const eff = unwrapNullish(ds.ac.shift());
         const mod = this.modAdj.isSome()
-            ? `${fmtMod(eff + this.modAdj.unwrap())}&nbsp;&#10731;`
+            ? `${fmtMod(eff + this.modAdj.unwrap())}&nbsp;${EFF_SHIELD}`
             : '';
         return `${mod}${eff}`;
     }
-    content() { return 'effVal'; }
+    content() { return 'defVal'; }
     triviaBefore() { return ''; }
     triviaAfter() { return ''; }
 }
@@ -317,7 +316,7 @@ class AcOrHitMod {
         const div = this._ac.isSome() ? ds.ac : ds.hit;
         const val = unwrapNullish(div.shift());
         const res = fmtMod(val);
-        return this.emph ? fmtEmph(res) : res;
+        return this.emph ? fmtBold(res) : res;
     }
     content() { return 'mod'; }
     triviaBefore() { return ''; }
@@ -327,12 +326,12 @@ class HpOrDmgVal {
     _hp;
     _dmg;
     dTemplate;
-    emph;
-    constructor(hp, dmg, dTemp, emph) {
+    bold;
+    constructor(hp, dmg, dTemp, bold) {
         this._hp = hp;
         this._dmg = dmg;
         this.dTemplate = dTemp;
-        this.emph = emph;
+        this.bold = bold;
     }
     ty() { return 'hpOrDmgVal'; }
     containsErrors() { return false; }
@@ -361,7 +360,7 @@ class HpOrDmgVal {
             approxErr = '';
         }
         const res = `${fmt}${approxErr}`;
-        return this.emph ? fmtEmph(res) : res;
+        return this.bold ? fmtBold(res) : res;
     }
     content() { return 'dmg'; }
     triviaBefore() { return ''; }

@@ -1,5 +1,5 @@
 html {
-  font-size: min(20px, 3.2vw);
+  font-size: min(22px, 3.2vw);
 }
 
 .block {
@@ -68,8 +68,13 @@ html {
   text-align: right;
 }
 
+.grid3x3 {
+  display: grid;
+  grid-template: repeat(3, 1fr)/repeat(3, 1fr);
+}
+
 html {
-  font-family: "DM Sans", sans-serif;
+  font-family: "Source Sans Pro", sans-serif;
   line-height: 1.5em;
   color: #111;
   font-variant-numeric: tabular-nums;
@@ -77,7 +82,8 @@ html {
 }
 
 .h {
-  font-family: "DM Serif Display", serif;
+  font-family: "Source Serif Pro", serif;
+  font-size: bold;
 }
 
 .huge {
@@ -88,14 +94,9 @@ html {
   font-size: 1.2rem;
 }
 
-.inlinehd {
+.taghd {
   text-transform: uppercase;
-  letter-spacing: 0.035em;
-  font-weight: bold;
-}
-
-.runin {
-  text-transform: capitalize;
+  letter-spacing: 0.07em;
   font-weight: bold;
 }
 
@@ -106,6 +107,12 @@ html {
 .err {
   color: crimson;
   font-weight: bold;
+}
+
+.example {
+  font-size: 0.85em;
+  line-height: 1.4em;
+  padding-left: 1em;
 }
 
 .sep {
@@ -141,6 +148,10 @@ html {
   width: 4.75rem;
 }
 
+.tinybr {
+  margin-top: 0.125rem;
+}
+
 .smallbr {
   margin-top: 0.25rem;
 }
@@ -165,8 +176,16 @@ html {
   outline: 0.5px solid #111;
 }
 
+.shieldicon {
+  position: relative;
+  top: 0.15em;
+  height: 0.9em;
+  margin: 0 0.11rem 0 0.15rem;
+}
+
 h2 {
-  font-family: "DM Serif Display";
+  font-family: "Source Serif Pro", serif;
+  font-weight: bold;
 }
 
 ul {
@@ -197,7 +216,7 @@ textarea {
   color: #111;
   border: none;
   outline: 0.5px solid #111;
-  font-family: "DM Sans", sans-serif;
+  font-family: "Source Sans Pro", sans-serif;
   font-size: 1rem;
   line-height: 1.5em;
 }
