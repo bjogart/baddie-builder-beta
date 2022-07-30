@@ -109,7 +109,7 @@ const METRIC_PRIME = "<em>'</em>";
 const EFF_SHIELD = '<img class="shieldicon" src="./res/shield.svg"/>';
 const DICE_FMT_MAX_ERR_THRES = 3;
 const FMT_DIGITS = 1;
-const PUNCT = /[.?!:;,]+/;
+const PUNCT = /[.?!]+/;
 class BlockJson {
     static fromProperties(version, params) {
         const block = new BlockJson(version);

@@ -92,7 +92,7 @@ function writeEntryDisp(entry, text) {
     const pane = unwrapNullish(entry.querySelector('.disp'), "entry has no '.disp' pane");
     pane.innerHTML = text;
 }
-function normalizationFactors(baddieTurnCount, baddieTurnCap, turnsPerActionCap, entriesAndParse) {
+function normalizationFactors(baddieTurnCount, baddieActionCap, entriesAndParse) {
     let hpShareCount = 0;
     let dmgShareCount = 0;
     let dmgUsingEntryCount = 0;
@@ -115,8 +115,8 @@ function normalizationFactors(baddieTurnCount, baddieTurnCap, turnsPerActionCap,
         if (baddieTurnCount === 1 && entryTurns > 1) {
             errors.push(`multi-turn moves are not available for non-elite baddies`);
         }
-        else if (entryTurns > turnsPerActionCap) {
-            errors.push(`this entry uses too many actions (used ${entryTurns} but maximum is ${turnsPerActionCap})`);
+        else if (entryTurns > baddieTurnCount) {
+            errors.push(`this entry uses too many actions (used ${entryTurns} but maximum is ${baddieTurnCount})`);
         }
         const w = 1;
         const hpShares = item.hp().length > 0 ? w : 0;
@@ -134,9 +134,9 @@ function normalizationFactors(baddieTurnCount, baddieTurnCap, turnsPerActionCap,
         }
         return { hpShares, dmgShares, errors, turns: entryTurns, isAction };
     });
-    if (actionCount > baddieTurnCap) {
+    if (actionCount > baddieActionCap) {
         data.forEach(it => { if (it.isAction) {
-            it.errors.push(`baddie is expected to take ${baddieTurnCap} turns, but it has actions for ${actionCount} turns`);
+            it.errors.push(`baddie is expected to take ${baddieActionCap} turns, but it has actions for ${actionCount} turns`);
         } });
     }
     return data.map(it => ({
@@ -283,7 +283,7 @@ function refresh() {
         const mbParse = str.trim().length === 0 ? Opt.none() : Opt.some(parse(str, builder));
         return { entry: it, parse: mbParse };
     });
-    const norms = normalizationFactors(actionsPerRound, actionsPerRound * EXP_ROUNDS, actionsPerRound, entriesAndParse);
+    const norms = normalizationFactors(actionsPerRound, actionsPerRound * EXP_ROUNDS, entriesAndParse);
     for (const it of entriesAndParse) {
         if (it.parse.isNone()) {
             it.entry.remove();

@@ -20,8 +20,8 @@ const TAG_PATS = [
             ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]], ['heal', []],
         ]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => as.has('heal')
-            ? new HpOrDmgVal(Opt.some(eq.modified(EXP_ROUNDS, 0)), Opt.none(), temp, false)
-            : new HpOrDmgVal(Opt.none(), Opt.some(eq), temp, false))),
+            ? new HpOrDmgVal(Opt.some(eq.modified(EXP_ROUNDS, 0)), Opt.none(), temp, true)
+            : new HpOrDmgVal(Opt.none(), Opt.some(eq), temp, true))),
     },
     {
         name: 'hit',
