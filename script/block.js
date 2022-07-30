@@ -1,22 +1,23 @@
 "use strict";
-function level(it) {
-    let s = unwrapNullish(it.textContent);
-    return parseInt(s);
-}
-function decrLv(it) {
-    const lvEl = unwrapNullish(it.parentElement?.querySelector('#lv'));
-    const lv = level(lvEl);
-    if (lv > STATS[0].level) {
-        lvEl.textContent = `${lv - 1}`;
-        refresh();
+function parseCounter(it) {
+    const toggler = it.parentElement?.parentElement?.previousSibling;
+    if (toggler && toggler.classList.contains('off')) {
+        return 1;
     }
+    let s = unwrapNullish(it.innerHTML);
+    return parseInt(s.replaceAll('\u2212', '-'));
 }
-function incrLv(it) {
-    const lvEl = unwrapNullish(it.parentElement?.querySelector('#lv'));
-    const lv = level(lvEl);
-    if (lv < STATS[STATS.length - 1].level) {
-        lvEl.textContent = `${lv + 1}`;
+function adjCounter(it, by, min, max) {
+    const el = unwrapNullish(it.parentElement?.querySelector('.val'));
+    const val = parseCounter(el);
+    const newVal = val + by;
+    if (newVal >= min && newVal <= max) {
+        el.innerHTML = fmtCounter(newVal);
         refresh();
+        return newVal;
+    }
+    else {
+        return val;
     }
 }
 function lookupKeyword(id) {
@@ -31,7 +32,7 @@ function cycleKeywords(it, cycle) {
     kwEl.textContent = next;
     refresh();
 }
-function newEntry(initialText = '[uses: 1] Slam. [hit]; [dmg] bludgeoning.') {
+function newEntry(initialText = 'Slam. [hit]; [dmg] bludgeoning.') {
     const entry = Object.assign(document.createElement('div'), {
         innerHTML: `<div class="entry medbr action">
 <div class="disp" onclick="toggleEntry(this)">
@@ -54,6 +55,23 @@ function toggleEntry(entryChild) {
         refresh();
     }
 }
+function toggleButton(toggler) {
+    const b = unwrapNullish(toggler.previousSibling, "toggler without '.fold'");
+    if (b.style.maxWidth) {
+        b.style.maxWidth = '';
+    }
+    else {
+        b.style.maxWidth = b.scrollWidth + 'px';
+    }
+    toggler.classList.toggle('off');
+    refresh();
+}
+function adjEliteCounter(toggler, adj) {
+    const res = adjCounter(toggler, adj, MIN_ELITE_TURNS, MAX_ELITE_TURNS);
+    if (res === 1 || res === 2 && Math.sign(adj) > 0) {
+        toggleButton(toggler);
+    }
+}
 function entryMarkupTextContent(entry) {
     const pane = unwrapNullish(entry.querySelector('.edit'), "entry has no '.edit' pane");
     let s = pane.value;
@@ -74,46 +92,62 @@ function writeEntryDisp(entry, text) {
     const pane = unwrapNullish(entry.querySelector('.disp'), "entry has no '.disp' pane");
     pane.innerHTML = text;
 }
-function computeNormVectors(entriesAndParse) {
-    const usageTags = entriesAndParse
-        .flatMap(it => flattenOpt(it.parse.map(it => it.uses().map(uses => ({
-        uses, hasHp: it.containsHpTags(), hasDmg: it.containsDmgTags()
-    })))));
-    const [hpTotalUseCount, dmgTotalUseCount, dmgUsageTagCount] = usageTags.reduce((res, c) => {
-        if (c.isSome()) {
-            const { uses, hasHp, hasDmg } = c.unwrap();
-            if (hasHp) {
-                res[0] += uses;
+function normalizationFactors(baddieTurnCount, baddieTurnCap, turnsPerActionCap, entriesAndParse) {
+    let hpShareCount = 0;
+    let dmgShareCount = 0;
+    let dmgUsingEntryCount = 0;
+    let actionCount = 0;
+    const data = entriesAndParse
+        .filter(it => it.parse.isSome())
+        .map(it => {
+        const errors = [];
+        const item = it.parse.unwrap();
+        const isAction = it.entry.classList.contains('action');
+        const isUse = isAction || it.entry.id === 'hp';
+        let mbEntryTurns = item.actions();
+        let entryTurns;
+        if (mbEntryTurns.isSome()) {
+            entryTurns = mbEntryTurns.unwrap().nActions;
+        }
+        else {
+            entryTurns = isUse ? entryTurns = 1 : entryTurns = 0;
+        }
+        if (baddieTurnCount === 1 && entryTurns > 1) {
+            errors.push(`multi-turn moves are not available for non-elite baddies`);
+        }
+        else if (entryTurns > turnsPerActionCap) {
+            errors.push(`this entry uses too many actions (used ${entryTurns} but maximum is ${turnsPerActionCap})`);
+        }
+        const w = 1;
+        const hpShares = item.hp().length > 0 ? w : 0;
+        hpShareCount += hpShares;
+        const dmgShares = item.dmg().length > 0 ? w : 0;
+        dmgShareCount += dmgShares;
+        if (isAction) {
+            if (dmgShares > 0) {
+                dmgUsingEntryCount += 1;
+                actionCount += entryTurns;
             }
-            if (hasDmg && uses > 0) {
-                res[1] += uses;
-                res[2] += 1;
+            else if (hpShares > 0) {
+                actionCount += entryTurns;
             }
         }
-        return res;
-    }, [0, 0, 0]);
-    return {
-        vectors: usageTags.map(c => c.map(c => [
-            c.uses / hpTotalUseCount,
-            c.uses * dmgUsageTagCount / dmgTotalUseCount,
-        ])),
-        errors: [{ lbl: 'hp', val: hpTotalUseCount - 1 }, { lbl: 'damage', val: dmgTotalUseCount }]
-            .filter(it => it.val > MAX_USES)
-            .map(it => ` out of ${it.lbl} uses (max. ${MAX_USES})`)
-    };
-}
-function appendErrors(errors, entries) {
-    const errEntries = errors.map(err => new Err('', err, ''));
-    for (let idx = entries.length - 1; idx >= 0; idx--) {
-        const entry = unwrapNullish(entries[idx]);
-        if (entry.parse.isSome()) {
-            const it = entry.parse.unwrap();
-            for (const err of errEntries) {
-                it.items.push(err);
-            }
-            return;
-        }
+        return { hpShares, dmgShares, errors, turns: entryTurns, isAction };
+    });
+    if (actionCount > baddieTurnCap) {
+        data.forEach(it => { if (it.isAction) {
+            it.errors.push(`baddie is expected to take ${baddieTurnCap} turns, but it has actions for ${actionCount} turns`);
+        } });
     }
+    return data.map(it => ({
+        errors: it.errors,
+        hp: it.turns * baddieTurnCount * (it.hpShares / hpShareCount),
+        dmg: dmgUsingEntryCount * it.turns * (it.dmgShares / dmgShareCount),
+    }));
+}
+function appendErrors(entry, errors) {
+    const errorEntries = new Err(' ', errors.join(ERR_SEP), '');
+    entry.items.push(errorEntries);
 }
 function rewrapTitle() {
     const entry = unwrapNullish(document.getElementById('title'));
@@ -134,6 +168,10 @@ function saveEntries(button) {
     const lv = unwrapNullish(document.getElementById('lv')).textContent;
     if (lv !== null) {
         data.push({ id: 'lv', text: lv });
+    }
+    const actionCount = unwrapNullish(document.getElementById('actionCount')).textContent;
+    if (actionCount !== null) {
+        data.push({ id: 'actionCount', text: actionCount });
     }
     const type = unwrapNullish(document.getElementById('type')?.querySelector('.edit')).value;
     data.push({ id: 'type', text: type });
@@ -171,11 +209,11 @@ function saveEntries(button) {
         }
     }
     if (err) {
-        button.classList.add('buttonerr');
+        button.classList.add('buttonerror');
         return;
     }
     const pane = unwrapNullish(document.getElementById('title')?.querySelector('.edit'));
-    const title = pane.value;
+    const title = pane.value.trim();
     const filename = titleToFileName(title);
     downloadJson(obj, filename);
 }
@@ -193,6 +231,14 @@ function loadEntries(button) {
             else {
                 const lv = json.lv.unwrapOr(LEVEL_1);
                 unwrapNullish(document.getElementById('lv')).textContent = lv;
+                const actionCount = json.actionCount.unwrapOr(ACTION_1);
+                const actionCountPane = unwrapNullish(document.getElementById('actionCount'));
+                actionCountPane.textContent = actionCount;
+                const actionCountToggler = unwrapNullish(actionCountPane.parentElement?.parentElement?.nextSibling);
+                if (actionCount === ACTION_1 && !actionCountToggler.classList.contains('off')
+                    || actionCount !== ACTION_1 && actionCountToggler.classList.contains('off')) {
+                    toggleButton(actionCountToggler);
+                }
                 const type = json.type.unwrapOr(CREATURE_TYPE_HUMANOID);
                 unwrapNullish(document.getElementById('type')?.querySelector('.edit')).value = type;
                 const size = json.size.unwrapOr(SIZE_MEDIUM);
@@ -215,19 +261,21 @@ function loadEntries(button) {
         }
         if (err.isSome()) {
             console.error(err.unwrap());
-            button.classList.add('buttonerr');
+            button.classList.add('buttonerror');
         }
     });
 }
 function resetButtonErrors() {
-    for (const it of document.getElementsByClassName('buttonerr')) {
-        it.classList.remove('buttonerr');
+    for (const it of document.getElementsByClassName('buttonerror')) {
+        it.classList.remove('buttonerror');
     }
 }
 function refresh() {
     const lvEl = unwrapNullish(document.getElementById("lv"), "no '#lv' pane");
-    const lv = level(lvEl);
-    const { hp, ac, dmg, hit } = budget(level(lvEl), unwrapNullish(DEFMUL_MOD[lookupKeyword('defmul')]), unwrapNullish(PLHIT_MOD[lookupKeyword('plhit')]), unwrapNullish(BDHIT_MOD[lookupKeyword('bdhit')]));
+    const lv = parseCounter(lvEl);
+    const actionEl = unwrapNullish(document.getElementById("actionCount"), "no '#actionCount' pane");
+    const actionsPerRound = parseCounter(actionEl);
+    const { hp, ac, dmg, hit } = budget(parseCounter(lvEl), unwrapNullish(DEFMUL_MOD[lookupKeyword('defmul')]), unwrapNullish(PLHIT_MOD[lookupKeyword('plhit')]), unwrapNullish(BDHIT_MOD[lookupKeyword('bdhit')]));
     const builder = new EntryBuilder(lv, lookupKeyword('size'));
     const entryElems = entries();
     const entriesAndParse = Array.from(entryElems).map(it => {
@@ -235,12 +283,8 @@ function refresh() {
         const mbParse = str.trim().length === 0 ? Opt.none() : Opt.some(parse(str, builder));
         return { entry: it, parse: mbParse };
     });
-    const { vectors: normVecs, errors: normErrors } = computeNormVectors(entriesAndParse);
-    if (normErrors.length > 0) {
-        appendErrors(normErrors, entriesAndParse);
-    }
+    const norms = normalizationFactors(actionsPerRound, actionsPerRound * EXP_ROUNDS, actionsPerRound, entriesAndParse);
     for (const it of entriesAndParse) {
-        const mbNorms = unwrapNullish(normVecs.shift());
         if (it.parse.isNone()) {
             it.entry.remove();
             continue;
@@ -252,9 +296,10 @@ function refresh() {
         const hitEqs = parse.hit();
         acEqs.forEach(eq => eq.fact /= acEqs.length);
         hitEqs.forEach(eq => eq.fact /= hitEqs.length);
-        const norms = mbNorms.unwrapOr([0, 0]);
-        const hpNorm = unwrapNullish(norms[0]);
-        const dmgNorm = unwrapNullish(norms[1]);
+        const { hp: hpNorm, dmg: dmgNorm, errors: normErrors } = unwrapNullish(norms.shift());
+        if (normErrors.length > 0) {
+            appendErrors(parse, normErrors);
+        }
         const divs = {
             hp: distribute(hpEqs, hp * hpNorm),
             ac: distribute(acEqs, ac).map(opt => opt.unwrap()),

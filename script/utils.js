@@ -8,7 +8,8 @@ function escapeHtml(s) {
 }
 function match(ch, re) { return ch.search(re) == 0; }
 function titleToFileName(title) {
-    const titleOrDefault = title.trim().length === 0 ? DEFAULT_BLOCK_NAME : title;
+    const trimmed = title.trim();
+    const titleOrDefault = trimmed.length === 0 || trimmed == '[title]' ? DEFAULT_BLOCK_NAME : title;
     const name = titleOrDefault.split(/\s+/g)
         .map(s => s.replaceAll(/[^\w]/g, ""))
         .flatMap(s => [s.charAt(0).toUpperCase(), s.substring(1).toLowerCase()])
@@ -88,4 +89,14 @@ class Opt {
     unwrapOr(def) { return this.isSome() ? this.optionalValue.val : def; }
     map(op) { return this.isSome() ? Opt.some(op(this.optionalValue.val)) : Opt.none(); }
     toList() { return this.isSome() ? [this.optionalValue.val] : []; }
+}
+class Result {
+    static ok(v) { return new Result({ successVal: v }); }
+    static err(v) { return new Result({ errVal: v }); }
+    v;
+    constructor(v) { this.v = v; }
+    isOk() { return 'successVal' in this.v; }
+    isErr() { return 'errVal' in this.v; }
+    unwrap() { return 'successVal' in this.v ? this.v.successVal : panic(`unwrap() called on err(${this.v.errVal})`); }
+    unwrapErr() { return 'errVal' in this.v ? this.v.errVal : panic(`unwrap() called on ok(${this.v.successVal})`); }
 }

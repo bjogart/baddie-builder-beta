@@ -1,6 +1,6 @@
 "use strict";
-function dispatchOrErr(v, ctor) {
-    return 'errors' in v ? new Err('', v.errors, '') : ctor(v);
+function dispatchOrErr(r, ctor) {
+    return r.isErr() ? new Err('', r.unwrapErr(), '') : ctor(r.unwrap());
 }
 function effCtor(gs, as, lbl) {
     return dispatchOrErr(Eq.fromArgs(as), eq => {
@@ -14,27 +14,14 @@ function effCtor(gs, as, lbl) {
 }
 const TAG_PATS = [
     {
-        name: 'hp',
-        argPats: new Map([
-            ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
-            ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]], ['heal', []],
-        ]),
-        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
-            if (temp.size.isNone()) {
-                temp.size = Opt.some(unwrapNullish(SIZE_HD[gs.size]));
-            }
-            const lbl = as.get('heal') ? '' : fmtTagHd('hp&nbsp;');
-            const emph = as.get('heal') !== undefined;
-            return new Lbl(lbl, '', new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, emph));
-        })),
-    },
-    {
         name: 'dmg',
         argPats: new Map([
             ['dmg', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
-            ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
+            ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]], ['heal', []],
         ]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => new HpOrDmgVal(Opt.none(), Opt.some(eq), temp, true))),
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => as.has('heal')
+            ? new HpOrDmgVal(Opt.some(eq.modified(EXP_ROUNDS, 0)), Opt.none(), temp, false)
+            : new HpOrDmgVal(Opt.none(), Opt.some(eq), temp, false))),
     },
     {
         name: 'hit',
@@ -45,15 +32,31 @@ const TAG_PATS = [
         }),
     },
     {
-        name: 'uses',
-        argPats: new Map([['uses', [NUM]]]),
+        name: 'actions',
+        argPats: new Map([['actions', [NUM]], ['concentration', []]]),
         ctor: (_gs, as) => {
-            const mbN = readNum(unwrapNullish(as.get('uses')).unwrap().content());
+            const mbN = readNum(unwrapNullish(as.get('actions')).unwrap().content());
             const n = mbN.isSome()
-                ? { val: mbN.unwrap() }
-                : { errors: `unreadable number ${as.get('uses')?.unwrap()}` };
-            return dispatchOrErr(n, n => new Uses(n.val));
+                ? Result.ok(mbN.unwrap())
+                : Result.err(`unreadable number ${as.get('actions')?.unwrap()}`);
+            return dispatchOrErr(n, n => n < 0
+                ? new Err('', `got '${n}' which is not a valid number of actions`, '')
+                : new ActionProperties(n, as.has('concentration')));
         }
+    },
+    {
+        name: 'hp',
+        argPats: new Map([
+            ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
+            ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
+        ]),
+        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
+            if (temp.size.isNone()) {
+                temp.size = Opt.some(unwrapNullish(SIZE_HD[gs.size]));
+            }
+            const entry = new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, false);
+            return new Lbl(fmtTagHd('hp&nbsp;'), '', entry);
+        })),
     },
     {
         name: 'ac',
@@ -106,49 +109,39 @@ const TAG_PATS = [
 ];
 class Item {
     items;
-    constructor(items) { this.items = items; }
+    _actionProps;
+    constructor(items) {
+        this.items = items;
+        this._actionProps = this.items.map(it => it.actions()).filter(it => it.isSome()).map(it => it.unwrap());
+    }
     ty() { return 'item'; }
-    containsErrors() { return this.items.reduce((b, it) => b || it.containsErrors(), false); }
-    containsHpTags() { return this.items.reduce((b, it) => b || it.containsHpTags(), false); }
-    containsDmgTags() { return this.items.reduce((b, it) => b || it.containsDmgTags(), false); }
+    containsErrors() {
+        return this.items.reduce((b, it) => b || it.containsErrors(), false)
+            && this._actionProps.length <= 1;
+    }
+    actions() {
+        return this._actionProps.length === 1 ? Opt.some(this._actionProps[0]) : Opt.none();
+    }
+    isLimited() { return this.items.some(it => it.isLimited()); }
     hp() { return this.items.flatMap(it => it.hp()); }
     ac() { return this.items.flatMap(it => it.ac()); }
     dmg() { return this.items.flatMap(it => it.dmg()); }
     hit() { return this.items.flatMap(it => it.hit()); }
-    uses() {
-        for (const it of this.items) {
-            const u = it.uses();
-            if (u.isSome()) {
-                return u;
-            }
-        }
-        return Opt.none();
-    }
     fmt(ds) {
-        let seenUsesTag = false;
-        let pastHeader = this.items.findIndex(it => match(it.content(), PUNCT)) === -1;
+        let endOfHeader = this.items.findIndex(it => match(it.content(), PUNCT));
         const hdFmts = [];
         const fmts = [];
         const errs = [];
-        for (const it of this.items) {
-            if (it.uses().isSome()) {
-                if (seenUsesTag) {
-                    errs.push("multiple [uses] tags in a single entry");
-                }
-                else {
-                    seenUsesTag = true;
-                }
+        const actionProps = this.actions().map(ps => ps.fmt).unwrapOr('');
+        this.items.forEach((it, idx) => {
+            let fmt = it.fmt(ds);
+            if (idx === endOfHeader && actionProps.length > 0) {
+                fmt = ` ${actionProps}${fmt}`;
             }
-            const fmt = it.fmt(ds);
-            pastHeader ? fmts.push(fmt) : hdFmts.push(fmt);
-            pastHeader ||= match(fmt, PUNCT);
-        }
-        const containsDistributedVal = this.containsHpTags() || this.containsDmgTags();
-        if (seenUsesTag && !containsDistributedVal) {
-            errs.push('entry has a [uses] tag but no [hp] or [dmg] tags');
-        }
-        if (!seenUsesTag && containsDistributedVal) {
-            errs.push('entry has [hp] or [dmg] tags but no [uses] tag');
+            idx > endOfHeader ? fmts.push(fmt) : hdFmts.push(fmt);
+        });
+        if (this._actionProps.length > 1) {
+            errs.push(`too many [actions] tags (expected 1 at most)`);
         }
         const errorMsgs = errs.length === 0 ? '' : ` ${errs.map(fmtErr).join(ERR_SEP)}`;
         return `${fmtTagHd(hdFmts.join(''))}${fmts.join('')}${errorMsgs}`;
@@ -159,34 +152,33 @@ class Item {
 }
 class Tag {
     l;
-    inner;
+    entry;
     r;
-    constructor(l, inner, r) {
+    constructor(l, entry, r) {
         this.l = l;
-        this.inner = inner;
+        this.entry = entry;
         this.r = r;
     }
     ty() { return 'tag'; }
-    containsErrors() { return this.l.containsErrors() || this.inner.containsErrors() || this.r.containsErrors(); }
-    containsHpTags() { return !this.containsErrors() && this.inner.containsHpTags(); }
-    containsDmgTags() { return !this.containsErrors() && this.inner.containsDmgTags(); }
-    hp() { return this.containsErrors() ? [] : this.inner.hp(); }
-    ac() { return this.containsErrors() ? [] : this.inner.ac(); }
-    dmg() { return this.containsErrors() ? [] : this.inner.dmg(); }
-    hit() { return this.containsErrors() ? [] : this.inner.hit(); }
-    uses() { return this.containsErrors() ? Opt.none() : this.inner.uses(); }
+    containsErrors() { return this.l.containsErrors() || this.entry.containsErrors() || this.r.containsErrors(); }
+    actions() { return this.entry.actions(); }
+    isLimited() { return this.entry.isLimited(); }
+    hp() { return this.containsErrors() ? [] : this.entry.hp(); }
+    ac() { return this.containsErrors() ? [] : this.entry.ac(); }
+    dmg() { return this.containsErrors() ? [] : this.entry.dmg(); }
+    hit() { return this.containsErrors() ? [] : this.entry.hit(); }
     fmt(ds) {
         const lWs = this.l.triviaBefore();
         const rWs = this.r.triviaAfter();
         const msg = this.containsErrors()
-            ? `[${[this.l, this.inner, this.r].filter(it => it.containsErrors())
+            ? `[${[this.l, this.entry, this.r].filter(it => it.containsErrors())
                 .map(it => it.fmt(ds))
                 .join(ERR_SEP)}]`
-            : this.inner.fmt(ds);
+            : this.entry.fmt(ds);
         return `${lWs}${msg}${rWs}`;
     }
     content() {
-        return [this.l, this.inner, this.r].reduce((s, it) => s.concat(it.content()), '');
+        return [this.l, this.entry, this.r].reduce((s, it) => s.concat(it.content()), '');
     }
     triviaBefore() { return this.l.triviaBefore(); }
     triviaAfter() { return this.r.triviaAfter(); }
@@ -198,13 +190,12 @@ class Lbl {
     constructor(pre, post, val) { this.pre = pre; this.entry = val; this.post = post; }
     ty() { return 'lbl'; }
     containsErrors() { return this.entry.containsErrors(); }
-    containsHpTags() { return this.entry.containsHpTags(); }
-    containsDmgTags() { return this.entry.containsDmgTags(); }
+    actions() { return this.entry.actions(); }
+    isLimited() { return this.entry.isLimited(); }
     hp() { return this.entry.hp(); }
     ac() { return this.entry.ac(); }
     dmg() { return this.entry.dmg(); }
     hit() { return this.entry.hit(); }
-    uses() { return this.entry.uses(); }
     fmt(ds) { return `${this.pre}${this.entry.fmt(ds)}${this.post}`; }
     content() { return `${this.pre}${this.entry.content()}${this.post}`; }
     triviaBefore() { return ''; }
@@ -215,13 +206,12 @@ class Hide {
     constructor(entry) { this.entry = entry; }
     ty() { return 'hide'; }
     containsErrors() { return this.entry.containsErrors(); }
-    containsHpTags() { return this.entry.containsHpTags(); }
-    containsDmgTags() { return this.entry.containsDmgTags(); }
+    actions() { return this.entry.actions(); }
+    isLimited() { return this.entry.isLimited(); }
     hp() { return this.entry.hp(); }
     ac() { return this.entry.ac(); }
     dmg() { return this.entry.dmg(); }
     hit() { return this.entry.hit(); }
-    uses() { return this.entry.uses(); }
     fmt(ds) { this.entry.fmt(ds); return ''; }
     content() { return ''; }
     triviaBefore() { return ''; }
@@ -241,13 +231,12 @@ class ZeroSum {
     }
     ty() { return 'eff'; }
     containsErrors() { return this.get(this.gs) !== 0; }
-    containsHpTags() { return this.entry.containsHpTags(); }
-    containsDmgTags() { return this.entry.containsDmgTags(); }
+    actions() { return this.entry.actions(); }
+    isLimited() { return this.entry.isLimited(); }
     hp() { return this.entry.hp(); }
     ac() { return this.entry.ac(); }
     dmg() { return this.entry.dmg(); }
     hit() { return this.entry.hit(); }
-    uses() { return this.entry.uses(); }
     fmt(ds) {
         const sum = this.get(this.gs);
         if (sum === 0) {
@@ -277,13 +266,12 @@ class DefVal {
     constructor(eff, prof) { this._ac = eff; this.modAdj = prof; }
     ty() { return 'defVal'; }
     containsErrors() { return false; }
-    containsHpTags() { return false; }
-    containsDmgTags() { return false; }
+    actions() { return Opt.none(); }
+    isLimited() { return false; }
     hp() { return []; }
     ac() { return [this._ac]; }
     dmg() { return []; }
     hit() { return []; }
-    uses() { return Opt.none(); }
     fmt(ds) {
         const eff = unwrapNullish(ds.ac.shift());
         const mod = this.modAdj.isSome()
@@ -306,13 +294,12 @@ class AcOrHitMod {
     }
     ty() { return 'acOrHitMod'; }
     containsErrors() { return false; }
-    containsHpTags() { return false; }
-    containsDmgTags() { return false; }
+    actions() { return Opt.none(); }
+    isLimited() { return false; }
     hp() { return []; }
     ac() { return this._ac.toList(); }
     dmg() { return []; }
     hit() { return this._hit.toList(); }
-    uses() { return Opt.none(); }
     fmt(ds) {
         const div = this._ac.isSome() ? ds.ac : ds.hit;
         const val = unwrapNullish(div.shift());
@@ -327,22 +314,21 @@ class HpOrDmgVal {
     _hp;
     _dmg;
     dTemplate;
-    emph;
-    constructor(hp, dmg, dTemp, emph) {
+    boldValue;
+    constructor(hp, dmg, dTemp, boldValue) {
         this._hp = hp;
         this._dmg = dmg;
         this.dTemplate = dTemp;
-        this.emph = emph;
+        this.boldValue = boldValue;
     }
     ty() { return 'hpOrDmgVal'; }
     containsErrors() { return false; }
-    containsHpTags() { return this._hp.isSome(); }
-    containsDmgTags() { return this._dmg.isSome(); }
+    actions() { return Opt.none(); }
+    isLimited() { return false; }
     hp() { return this._hp.toList(); }
     ac() { return []; }
     dmg() { return this._dmg.toList(); }
     hit() { return []; }
-    uses() { return Opt.none(); }
     fmt(ds) {
         const div = this._hp.isSome() ? ds.hp : ds.dmg;
         const val = unwrapNullish(div.shift());
@@ -361,7 +347,7 @@ class HpOrDmgVal {
             approxErr = '';
         }
         const res = `${fmt}${approxErr}`;
-        return this.emph ? fmtBold(res) : res;
+        return this.boldValue ? fmtBold(res) : res;
     }
     content() { return 'dmg'; }
     triviaBefore() { return ''; }
@@ -400,41 +386,18 @@ class Mv {
     }
     ty() { return 'mv'; }
     containsErrors() { return this.err.length > 0; }
-    containsHpTags() { return false; }
-    containsDmgTags() { return false; }
+    actions() { return Opt.none(); }
+    isLimited() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
     hit() { return []; }
-    uses() { return Opt.none(); }
     fmt(_ds) {
         return [this.walk, this.climb, this.fly, this.swim, this.err]
             .filter(s => s.length > 0)
             .join(', ');
     }
     content() { return 'mv'; }
-    triviaBefore() { return ''; }
-    triviaAfter() { return ''; }
-}
-class Uses {
-    n;
-    constructor(n) { this.n = n; }
-    ty() { return 'uses'; }
-    containsErrors() { return this.n < 0; }
-    containsHpTags() { return false; }
-    containsDmgTags() { return false; }
-    hp() { return []; }
-    ac() { return []; }
-    dmg() { return []; }
-    hit() { return []; }
-    uses() { return Opt.some(this.n); }
-    fmt(_ds) {
-        if (this.containsErrors()) {
-            return fmtErr(`cannot use an action ${this.n} times`);
-        }
-        return '';
-    }
-    content() { return ''; }
     triviaBefore() { return ''; }
     triviaAfter() { return ''; }
 }
@@ -468,17 +431,45 @@ class Num {
     }
     ty() { return 'num'; }
     containsErrors() { return false; }
-    containsHpTags() { return false; }
-    containsDmgTags() { return false; }
+    actions() { return Opt.none(); }
+    isLimited() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
     hit() { return []; }
-    uses() { return Opt.none(); }
     fmt(_ds) { return this.content(); }
     content() { return this.s; }
     triviaBefore() { return this._triviaBefore; }
     triviaAfter() { return this._triviaAfter; }
+}
+class ActionProperties {
+    n;
+    concentration;
+    constructor(n, concentration) { this.n = n; this.concentration = concentration; }
+    ty() { return 'actions'; }
+    containsErrors() { return false; }
+    actions() { return Opt.some({ nActions: this.n, fmt: this.content() }); }
+    isLimited() { return false; }
+    hp() { return []; }
+    ac() { return []; }
+    dmg() { return []; }
+    hit() { return []; }
+    fmt(_ds) {
+        return '';
+    }
+    content() {
+        const props = [];
+        if (this.n > 1) {
+            props.push(`${this.n} actions`);
+        }
+        if (this.concentration) {
+            props.push('C');
+        }
+        const propsFmt = props.join(', ');
+        return `(${propsFmt})`;
+    }
+    triviaBefore() { return ''; }
+    triviaAfter() { return ''; }
 }
 class Err {
     _triviaBefore;
@@ -491,13 +482,12 @@ class Err {
     }
     ty() { return 'err'; }
     containsErrors() { return true; }
-    containsHpTags() { return false; }
-    containsDmgTags() { return false; }
+    actions() { return Opt.none(); }
+    isLimited() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
     hit() { return []; }
-    uses() { return Opt.none(); }
     fmt(_ds) { return this.content(); }
     content() { return fmtErr(`${this.triviaBefore()}${this.msg}${this.triviaAfter()}`); }
     triviaBefore() { return this._triviaBefore; }
@@ -516,13 +506,12 @@ class Token {
     }
     ty() { return this.tag; }
     containsErrors() { return false; }
-    containsHpTags() { return false; }
-    containsDmgTags() { return false; }
+    actions() { return Opt.none(); }
+    isLimited() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
     hit() { return []; }
-    uses() { return Opt.none(); }
     fmt(_ds) { return `${this.triviaBefore()}${this.s}${this.triviaAfter()}`; }
     content() { return this.s; }
     triviaBefore() { return this._triviaBefore; }
@@ -555,11 +544,11 @@ function matchArgs(globals, args, pat) {
                     err = Opt.none();
                 }
                 else {
-                    err = Opt.some(`expected ${it.pat.join(' or ')} but found '${a.content()}'`);
+                    err = Opt.some(`expected ${it.pat.join(' or ')} but got '${a.content()}'`);
                 }
             }
             else {
-                err = Opt.some(`did not expect an argument but found '${a.content()}'`);
+                err = Opt.some(`did not expect an argument but got '${a.content()}'`);
             }
         }
         else {
@@ -650,7 +639,7 @@ class EntryBuilder {
     num(tokens) { return new Num(tokens); }
     item(pieces) { return new Item(pieces); }
     symErr(s, exp) {
-        return new Err('', `found '${s}' but expected ${exp}`, '');
+        return new Err('', `got '${s}' but expected ${exp}`, '');
     }
     eoiErr(s) { return new Err('', `reached end of text while looking for ${s}`, ''); }
 }

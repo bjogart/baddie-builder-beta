@@ -2,6 +2,7 @@
 function fmtTagHd(msg) { return `<span class="taghd">${msg}</span>`; }
 function fmtBold(msg) { return `<strong>${msg}</strong>`; }
 function fmtErr(msg) { return `<span class="err">${msg}</span>`; }
+function fmtCounter(lv) { return lv >= 0 ? `${lv}` : `&minus;${Math.abs(lv)}`; }
 function fmtMod(mod) { return mod >= 0 ? `+${mod}` : `&minus;${Math.abs(mod)}`; }
 class Dice {
     static make(count, size, plus, diff, err) {
@@ -50,7 +51,7 @@ class DiceTemplate {
             }
             dice.plus = Opt.some(n);
         }
-        return errors.length > 0 ? { errors: errors.join(ERR_SEP) } : dice;
+        return errors.length > 0 ? Result.err(errors.join(ERR_SEP)) : Result.ok(dice);
     }
     count;
     size;
@@ -61,7 +62,7 @@ class DiceTemplate {
         this.plus = plus;
     }
 }
-const POLY_DMG_DICE = [6, 8, 4, 10, 12];
+const POLY_DMG_DICE = [6, 8, 10, 4, 12];
 function cmpAesthetic(a, b) {
     if (a.count > 0 && b.count === 0) {
         return -1;
@@ -112,13 +113,14 @@ function printDice(dice) {
     if (dice.count === 0 || dice.size === 0) {
         return `${dice.plus}`;
     }
-    const diceFmt = dice.count === 1 ? `d${dice.size}` : `${dice.count}d${dice.size}`;
+    const countFmt = dice.count < 0 ? `&minus;${Math.abs(dice.count)}` : `${dice.count}`;
+    const diceFmt = `${countFmt}d${dice.size}`;
     let consFmt;
     if (dice.plus === 0) {
         consFmt = '';
     }
     else if (dice.plus < 0) {
-        consFmt = `${dice.plus}`;
+        consFmt = `&minus;${Math.abs(dice.plus)}`;
     }
     else {
         consFmt = `+${dice.plus}`;

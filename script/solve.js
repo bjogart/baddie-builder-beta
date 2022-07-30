@@ -43,11 +43,17 @@ class Eq {
                 eq.fact /= n;
             }
         }
-        return errors.length > 0 ? { errors: errors.join(ERR_SEP) } : eq;
+        return errors.length > 0 ? Result.err(errors.join(ERR_SEP)) : Result.ok(eq);
     }
     fact;
     term;
     constructor() { this.fact = 1; this.term = 0; }
+    modified(factMul, termPlus) {
+        const eq = new Eq();
+        eq.fact = this.fact * factMul;
+        eq.term = this.term + termPlus;
+        return eq;
+    }
 }
 function distribute(eqs, budget) {
     return eqs.map(eq => {

@@ -54,13 +54,14 @@ SIZE_HD[SIZE_HUGE] = 12;
 SIZE_HD[SIZE_GARGANTUAN] = 20;
 const CREATURE_TYPE_HUMANOID = 'Humanoid';
 const LEVEL_1 = '1';
+const ACTION_1 = '1';
 const FILE_VERSION = '1.0.0';
 const DEFAULT_BLOCK_NAME = 'Baddie';
 const BLOCK_FILE_EXT = '.baddie';
 const PLAYER_HIT = 0.6;
 const BADDIE_HIT = 0.6;
 const HIT_INCR = 0.05;
-const MAX_USES = 3;
+const EXP_ROUNDS = 3;
 const STATS = [
     { level: -3, hp: 14.81, ac: 14, dmg: 1.81, hit: 5 },
     { level: -2, hp: 16.23, ac: 14, dmg: 1.98, hit: 5 },
@@ -91,6 +92,10 @@ const STATS = [
     { level: 23, hp: 243.92, ac: 23, dmg: 77.71, hit: 14 },
     { level: 24, hp: 272.71, ac: 23, dmg: 86.88, hit: 14 },
 ];
+const MIN_LV = STATS[0].level;
+const MAX_LV = STATS[STATS.length - 1].level;
+const MIN_ELITE_TURNS = 1;
+const MAX_ELITE_TURNS = 8;
 const LBRAC = '[';
 const RBRAC = ']';
 const QUOT = "'";
@@ -110,6 +115,9 @@ class BlockJson {
         const block = new BlockJson(version);
         if (params.lv !== undefined) {
             block.lv = Opt.some(params.lv);
+        }
+        if (params.actionCount !== undefined) {
+            block.actionCount = Opt.some(params.actionCount);
         }
         if (params.type !== undefined) {
             block.type = Opt.some(params.type);
@@ -162,6 +170,7 @@ class BlockJson {
         return block;
     }
     lv;
+    actionCount;
     type;
     size;
     bdhit;
@@ -181,6 +190,7 @@ class BlockJson {
     version;
     constructor(version) {
         this.lv = Opt.none();
+        this.actionCount = Opt.none();
         this.type = Opt.none();
         this.size = Opt.none();
         this.bdhit = Opt.none();
@@ -203,6 +213,9 @@ class BlockJson {
         const obj = { version: this.version, actions: this.actions };
         if (this.lv.isSome()) {
             obj['lv'] = this.lv.unwrap();
+        }
+        if (this.actionCount.isSome()) {
+            obj['actionCount'] = this.actionCount.unwrap();
         }
         if (this.type.isSome()) {
             obj['type'] = this.type.unwrap();

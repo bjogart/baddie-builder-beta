@@ -1,10 +1,10 @@
 html {
-  font-size: min(22px, 3.2vw);
+  font-size: min(22px, 3vw);
 }
 
 .block {
-  width: 30rem;
-  max-width: 30rem;
+  width: 32rem;
+  max-width: 32rem;
 }
 
 .cols {
@@ -73,6 +73,10 @@ html {
   grid-template: repeat(3, 1fr)/repeat(3, 1fr);
 }
 
+.padl {
+  padding-left: 0.25rem;
+}
+
 html {
   font-family: "Source Sans Pro", sans-serif;
   line-height: 1.5em;
@@ -100,52 +104,49 @@ html {
   font-weight: bold;
 }
 
-.emph {
-  font-weight: bold;
-}
-
 .err {
   color: crimson;
   font-weight: bold;
 }
 
-.example {
-  font-size: 0.85em;
-  line-height: 1.4em;
-  padding-left: 1em;
-}
-
 .sep {
   border-bottom: 1px solid #111;
+  padding-bottom: 0.25rem;
 }
 
-.buttoncol {
-  background-color: #111;
-  color: #fff;
-  opacity: 65%;
+.buttonshape {
   user-select: none;
-  padding: 0 0.5rem 0 0.5rem;
+  padding: 0 0.25rem;
   text-align: center;
 }
 
-.buttonerr {
-  background-color: crimson;
+.widebuttonshape {
+  user-select: none;
+  padding: 0 0.5rem;
+  text-align: center;
 }
 
-.buttonsel {
+.buttoncolor {
+  background-color: #111;
+  color: #fff;
+  opacity: 65%;
+}
+
+.off {
+  opacity: 30%;
+}
+
+.buttonselect {
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.buttonsel:hover {
+.buttonselect:hover {
   opacity: 100%;
 }
 
-.lvbuttonwidth {
-  width: 4rem;
-}
-
-.keywordbuttonwidth {
-  width: 4.75rem;
+.buttonerror {
+  background-color: crimson;
 }
 
 .tinybr {
@@ -168,8 +169,13 @@ html {
   margin-top: 4rem;
 }
 
-.smallpadbottom {
-  padding-bottom: 0.25rem;
+.fold {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: clip;
+  max-width: 0;
+  padding: 0;
+  transition: all 0.15s ease;
 }
 
 .entry > .disp:hover:not(.hide) {
@@ -188,6 +194,12 @@ h2 {
   font-weight: bold;
 }
 
+.example {
+  font-size: 0.85em;
+  line-height: 1.4em;
+  padding-left: 1em;
+}
+
 ul {
   list-style-type: circle;
   padding-left: 1rem;
@@ -204,7 +216,7 @@ th {
 }
 
 td {
-  padding: 0 0.5rem 0 0.5rem;
+  padding: 0 0.25rem;
 }
 
 textarea {
