@@ -7,6 +7,10 @@ html {
   max-width: 32rem;
 }
 
+.flex {
+  display: flex;
+}
+
 .cols {
   display: flex;
   justify-content: space-between;
@@ -170,12 +174,10 @@ html {
 }
 
 .fold {
-  display: inline-block;
   white-space: nowrap;
-  overflow: clip;
+  overflow: hidden;
   max-width: 0;
-  padding: 0;
-  transition: all 0.15s ease;
+  transition: all 0.15s ease-out;
 }
 
 .entry > .disp:hover:not(.hide) {
