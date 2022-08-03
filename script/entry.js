@@ -17,10 +17,10 @@ const TAG_PATS = [
         name: 'dmg',
         argPats: new Map([
             ['dmg', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
-            ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]], ['heal', []],
+            ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
         ]),
         ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => as.has('heal')
-            ? new HpOrDmgVal(Opt.some(eq.modified(EXP_ROUNDS, 0)), Opt.none(), temp, true)
+            ? new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, true)
             : new HpOrDmgVal(Opt.none(), Opt.some(eq), temp, true))),
     },
     {
@@ -33,16 +33,36 @@ const TAG_PATS = [
     },
     {
         name: 'actions',
-        argPats: new Map([['actions', [NUM]], ['concentration', []]]),
+        argPats: new Map([['actions', [NUM]]]),
         ctor: (_gs, as) => {
-            const mbN = readNum(unwrapNullish(as.get('actions')).unwrap().content());
+            const s = unwrapNullish(as.get('actions')).unwrap().content();
+            const mbN = readNum(s);
             const n = mbN.isSome()
                 ? Result.ok(mbN.unwrap())
-                : Result.err(`unreadable number ${as.get('actions')?.unwrap()}`);
+                : Result.err(`unreadable number ${s}`);
             return dispatchOrErr(n, n => n < 0
-                ? new Err('', `got '${n}' which is not a valid number of actions`, '')
-                : new ActionProperties(n, as.has('concentration')));
+                ? new Err('', `'${n}' is not a valid number of actions`, '')
+                : new Actions(n));
         }
+    },
+    {
+        name: 'limit',
+        argPats: new Map([['limit', [NUM]]]),
+        ctor: (_gs, as) => {
+            const s = unwrapNullish(as.get('limit')).unwrap().content();
+            const mbN = readNum(s);
+            const n = mbN.isSome()
+                ? Result.ok(mbN.unwrap())
+                : Result.err(`unreadable number ${s}`);
+            return dispatchOrErr(n, n => n <= 0
+                ? new Err('', `cannot use a move up to ${n} times!`, '')
+                : new Limit(n));
+        }
+    },
+    {
+        name: 'concentration',
+        argPats: new Map([['concentration', []]]),
+        ctor: (_gs, _as) => new Concentration(),
     },
     {
         name: 'hp',
@@ -109,20 +129,19 @@ const TAG_PATS = [
 ];
 class Item {
     items;
-    _actionProps;
     constructor(items) {
         this.items = items;
-        this._actionProps = this.items.map(it => it.actions()).filter(it => it.isSome()).map(it => it.unwrap());
     }
     ty() { return 'item'; }
     containsErrors() {
-        return this.items.reduce((b, it) => b || it.containsErrors(), false)
-            && this._actionProps.length <= 1;
+        return this.items.reduce((b, it) => b || it.containsErrors(), false);
     }
-    actions() {
-        return this._actionProps.length === 1 ? Opt.some(this._actionProps[0]) : Opt.none();
-    }
-    isLimited() { return this.items.some(it => it.isLimited()); }
+    header() { return Opt.none(); }
+    limitTags() { return this.items.map(it => it.limit()).filter(it => it.isSome()); }
+    limit() { return this.limitTags()[0] ?? Opt.none(); }
+    actionTags() { return this.items.map(it => it.actions()).filter(it => it.isSome()); }
+    actionTagCount() { return this.actionTags().length; }
+    actions() { return this.actionTags()[0] ?? Opt.none(); }
     hp() { return this.items.flatMap(it => it.hp()); }
     ac() { return this.items.flatMap(it => it.ac()); }
     dmg() { return this.items.flatMap(it => it.dmg()); }
@@ -131,17 +150,22 @@ class Item {
         let endOfHeader = this.items.findIndex(it => match(it.content(), PUNCT));
         const hdFmts = [];
         const fmts = [];
-        const errs = [];
-        const actionProps = this.actions().map(ps => ps.fmt).unwrapOr('');
+        const errs = ds.errors;
+        let headerProps = this.items.map(it => it.header()).filter(it => it.isSome()).map(it => it.unwrap());
+        headerProps.sort((a, b) => a.priority - b.priority);
+        const props = headerProps.length > 0 ? `(${headerProps.map(it => it.text).join(", ")})` : '';
         this.items.forEach((it, idx) => {
             let fmt = it.fmt(ds);
-            if (idx === endOfHeader && actionProps.length > 0) {
-                fmt = ` ${actionProps}${fmt}`;
+            if (idx === endOfHeader && props.length > 0) {
+                fmt = ` ${props}${fmt}`;
             }
             idx > endOfHeader ? fmts.push(fmt) : hdFmts.push(fmt);
         });
-        if (this._actionProps.length > 1) {
+        if (this.actionTagCount() > 1) {
             errs.push(`too many [actions] tags (expected 1 at most)`);
+        }
+        if (this.limitTags().length > 1) {
+            errs.push(`too many [limit] tags (expected 1 at most)`);
         }
         const errorMsgs = errs.length === 0 ? '' : ` ${errs.map(fmtErr).join(ERR_SEP)}`;
         return `${fmtTagHd(hdFmts.join(''))}${fmts.join('')}${errorMsgs}`;
@@ -161,8 +185,9 @@ class Tag {
     }
     ty() { return 'tag'; }
     containsErrors() { return this.l.containsErrors() || this.entry.containsErrors() || this.r.containsErrors(); }
+    header() { return this.entry.header(); }
+    limit() { return this.entry.limit(); }
     actions() { return this.entry.actions(); }
-    isLimited() { return this.entry.isLimited(); }
     hp() { return this.containsErrors() ? [] : this.entry.hp(); }
     ac() { return this.containsErrors() ? [] : this.entry.ac(); }
     dmg() { return this.containsErrors() ? [] : this.entry.dmg(); }
@@ -190,8 +215,9 @@ class Lbl {
     constructor(pre, post, val) { this.pre = pre; this.entry = val; this.post = post; }
     ty() { return 'lbl'; }
     containsErrors() { return this.entry.containsErrors(); }
+    header() { return this.entry.header(); }
+    limit() { return this.entry.limit(); }
     actions() { return this.entry.actions(); }
-    isLimited() { return this.entry.isLimited(); }
     hp() { return this.entry.hp(); }
     ac() { return this.entry.ac(); }
     dmg() { return this.entry.dmg(); }
@@ -200,22 +226,6 @@ class Lbl {
     content() { return `${this.pre}${this.entry.content()}${this.post}`; }
     triviaBefore() { return ''; }
     triviaAfter() { return this.entry.triviaAfter(); }
-}
-class Hide {
-    entry;
-    constructor(entry) { this.entry = entry; }
-    ty() { return 'hide'; }
-    containsErrors() { return this.entry.containsErrors(); }
-    actions() { return this.entry.actions(); }
-    isLimited() { return this.entry.isLimited(); }
-    hp() { return this.entry.hp(); }
-    ac() { return this.entry.ac(); }
-    dmg() { return this.entry.dmg(); }
-    hit() { return this.entry.hit(); }
-    fmt(ds) { this.entry.fmt(ds); return ''; }
-    content() { return ''; }
-    triviaBefore() { return ''; }
-    triviaAfter() { return ''; }
 }
 class ZeroSum {
     gs;
@@ -231,8 +241,9 @@ class ZeroSum {
     }
     ty() { return 'eff'; }
     containsErrors() { return this.get(this.gs) !== 0; }
+    header() { return this.entry.header(); }
+    limit() { return this.entry.limit(); }
     actions() { return this.entry.actions(); }
-    isLimited() { return this.entry.isLimited(); }
     hp() { return this.entry.hp(); }
     ac() { return this.entry.ac(); }
     dmg() { return this.entry.dmg(); }
@@ -266,8 +277,9 @@ class DefVal {
     constructor(eff, prof) { this._ac = eff; this.modAdj = prof; }
     ty() { return 'defVal'; }
     containsErrors() { return false; }
+    header() { return Opt.none(); }
+    limit() { return Opt.none(); }
     actions() { return Opt.none(); }
-    isLimited() { return false; }
     hp() { return []; }
     ac() { return [this._ac]; }
     dmg() { return []; }
@@ -294,8 +306,9 @@ class AcOrHitMod {
     }
     ty() { return 'acOrHitMod'; }
     containsErrors() { return false; }
+    header() { return Opt.none(); }
+    limit() { return Opt.none(); }
     actions() { return Opt.none(); }
-    isLimited() { return false; }
     hp() { return []; }
     ac() { return this._ac.toList(); }
     dmg() { return []; }
@@ -323,8 +336,9 @@ class HpOrDmgVal {
     }
     ty() { return 'hpOrDmgVal'; }
     containsErrors() { return false; }
+    header() { return Opt.none(); }
+    limit() { return Opt.none(); }
     actions() { return Opt.none(); }
-    isLimited() { return false; }
     hp() { return this._hp.toList(); }
     ac() { return []; }
     dmg() { return this._dmg.toList(); }
@@ -332,10 +346,7 @@ class HpOrDmgVal {
     fmt(ds) {
         const div = this._hp.isSome() ? ds.hp : ds.dmg;
         const val = unwrapNullish(div.shift());
-        if (val.isNone()) {
-            return fmtErr('math error');
-        }
-        const dice = renderDice(val.unwrap(), this.dTemplate);
+        const dice = renderDice(val, this.dTemplate);
         const fmt = printDice(dice);
         let approxErr;
         if (dice.err >= DICE_FMT_MAX_ERR_THRES) {
@@ -386,8 +397,9 @@ class Mv {
     }
     ty() { return 'mv'; }
     containsErrors() { return this.err.length > 0; }
+    header() { return Opt.none(); }
+    limit() { return Opt.none(); }
     actions() { return Opt.none(); }
-    isLimited() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
@@ -431,8 +443,9 @@ class Num {
     }
     ty() { return 'num'; }
     containsErrors() { return false; }
+    header() { return Opt.none(); }
+    limit() { return Opt.none(); }
     actions() { return Opt.none(); }
-    isLimited() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
@@ -442,32 +455,61 @@ class Num {
     triviaBefore() { return this._triviaBefore; }
     triviaAfter() { return this._triviaAfter; }
 }
-class ActionProperties {
+class Actions {
     n;
-    concentration;
-    constructor(n, concentration) { this.n = n; this.concentration = concentration; }
+    constructor(n) { this.n = n; }
     ty() { return 'actions'; }
     containsErrors() { return false; }
-    actions() { return Opt.some({ nActions: this.n, fmt: this.content() }); }
-    isLimited() { return false; }
+    header() {
+        return this.n > 1
+            ? Opt.some({ priority: HEADER_PRIORITY_ACTIONS, text: `${this.n} Actions` })
+            : Opt.none();
+    }
+    actions() { return Opt.some(this.n); }
+    limit() { return Opt.none(); }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
     hit() { return []; }
-    fmt(_ds) {
-        return '';
+    fmt(_ds) { return ''; }
+    content() { return ''; }
+    triviaBefore() { return ''; }
+    triviaAfter() { return ''; }
+}
+class Concentration {
+    constructor() { }
+    ty() { return 'concentration'; }
+    containsErrors() { return false; }
+    limit() { return Opt.none(); }
+    actions() { return Opt.none(); }
+    header() {
+        return Opt.some({ priority: HEADER_PRIORITY_CONCENTRATION, text: 'C' });
     }
-    content() {
-        const props = [];
-        if (this.n > 1) {
-            props.push(`${this.n} actions`);
-        }
-        if (this.concentration) {
-            props.push('C');
-        }
-        const propsFmt = props.join(', ');
-        return `(${propsFmt})`;
+    hp() { return []; }
+    ac() { return []; }
+    dmg() { return []; }
+    hit() { return []; }
+    fmt(_ds) { return ''; }
+    content() { return ''; }
+    triviaBefore() { return ''; }
+    triviaAfter() { return ''; }
+}
+class Limit {
+    n;
+    constructor(n) { this.n = n; }
+    ty() { return 'limit'; }
+    containsErrors() { return false; }
+    header() {
+        return Opt.some({ priority: HEADER_PRIORITY_LIMIT, text: `Limit ${this.n}` });
     }
+    actions() { return Opt.none(); }
+    limit() { return Opt.some(this.n); }
+    hp() { return []; }
+    ac() { return []; }
+    dmg() { return []; }
+    hit() { return []; }
+    fmt(_ds) { return ''; }
+    content() { return ''; }
     triviaBefore() { return ''; }
     triviaAfter() { return ''; }
 }
@@ -482,8 +524,9 @@ class Err {
     }
     ty() { return 'err'; }
     containsErrors() { return true; }
+    header() { return Opt.none(); }
+    limit() { return Opt.none(); }
     actions() { return Opt.none(); }
-    isLimited() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
@@ -506,8 +549,9 @@ class Token {
     }
     ty() { return this.tag; }
     containsErrors() { return false; }
+    header() { return Opt.none(); }
+    limit() { return Opt.none(); }
     actions() { return Opt.none(); }
-    isLimited() { return false; }
     hp() { return []; }
     ac() { return []; }
     dmg() { return []; }
@@ -597,7 +641,7 @@ class EntryBuilder {
     }
     tag(l, args, r) {
         if (args.length === 0) {
-            return errTag(l, '[tag is empty]', r);
+            return errTag(l, 'tag is empty', r);
         }
         const errors = args.flatMap(tag => {
             let elems = [tag.name];

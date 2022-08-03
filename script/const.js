@@ -62,38 +62,39 @@ const PLAYER_HIT = 0.6;
 const BADDIE_HIT = 0.6;
 const HIT_INCR = 0.05;
 const EXP_ROUNDS = 3;
+const FRAC_OF_FREE_MOVES_SHARED_WITH_LIMITED_MOVES = 1 / 4;
 const STATS = [
-    { level: -3, hp: 14.81, ac: 14, dmg: 1.81, hit: 5 },
-    { level: -2, hp: 16.23, ac: 14, dmg: 1.98, hit: 5 },
-    { level: -1, hp: 17.78, ac: 14, dmg: 2.17, hit: 5 },
-    { level: 0, hp: 19.47, ac: 14, dmg: 2.38, hit: 5 },
-    { level: 1, hp: 21.33, ac: 14, dmg: 2.6, hit: 5 },
-    { level: 2, hp: 22.53, ac: 14, dmg: 4.52, hit: 5 },
-    { level: 3, hp: 32.39, ac: 15, dmg: 6.43, hit: 6 },
-    { level: 4, hp: 40.43, ac: 16, dmg: 8.34, hit: 7 },
-    { level: 5, hp: 51.81, ac: 17, dmg: 10.25, hit: 8 },
-    { level: 6, hp: 58.6, ac: 17, dmg: 12.17, hit: 8 },
-    { level: 7, hp: 60.31, ac: 18, dmg: 14.08, hit: 8 },
-    { level: 8, hp: 63.01, ac: 19, dmg: 16.16, hit: 9 },
-    { level: 9, hp: 70.59, ac: 20, dmg: 18.09, hit: 11 },
-    { level: 10, hp: 79.81, ac: 20, dmg: 20.24, hit: 11 },
-    { level: 11, hp: 89.04, ac: 20, dmg: 22.2, hit: 11 },
-    { level: 12, hp: 90.25, ac: 20, dmg: 27.49, hit: 11 },
-    { level: 13, hp: 91.47, ac: 21, dmg: 29.72, hit: 12 },
-    { level: 14, hp: 99.63, ac: 21, dmg: 31.95, hit: 12 },
-    { level: 15, hp: 107.73, ac: 22, dmg: 34.18, hit: 13 },
-    { level: 16, hp: 122.67, ac: 22, dmg: 40.52, hit: 13 },
-    { level: 17, hp: 139.09, ac: 23, dmg: 43.01, hit: 14 },
-    { level: 18, hp: 150.08, ac: 23, dmg: 45.5, hit: 14 },
-    { level: 19, hp: 151.22, ac: 23, dmg: 52.05, hit: 14 },
-    { level: 20, hp: 174.54, ac: 23, dmg: 55.61, hit: 14 },
-    { level: 21, hp: 195.14, ac: 23, dmg: 62.17, hit: 14 },
-    { level: 22, hp: 218.17, ac: 23, dmg: 69.51, hit: 14 },
-    { level: 23, hp: 243.92, ac: 23, dmg: 77.71, hit: 14 },
-    { level: 24, hp: 272.71, ac: 23, dmg: 86.88, hit: 14 },
+    { lv: -3, hp: 4.94, ac: 14, dmg: 1.81, hit: 5 },
+    { lv: -2, hp: 5.41, ac: 14, dmg: 1.98, hit: 5 },
+    { lv: -1, hp: 5.93, ac: 14, dmg: 2.17, hit: 5 },
+    { lv: 0, hp: 6.49, ac: 14, dmg: 2.38, hit: 5 },
+    { lv: 1, hp: 7.11, ac: 14, dmg: 2.6, hit: 5 },
+    { lv: 2, hp: 7.51, ac: 14, dmg: 4.52, hit: 5 },
+    { lv: 3, hp: 10.8, ac: 15, dmg: 6.43, hit: 6 },
+    { lv: 4, hp: 13.48, ac: 16, dmg: 8.34, hit: 7 },
+    { lv: 5, hp: 17.27, ac: 17, dmg: 10.25, hit: 8 },
+    { lv: 6, hp: 19.53, ac: 17, dmg: 12.17, hit: 8 },
+    { lv: 7, hp: 20.1, ac: 18, dmg: 14.08, hit: 8 },
+    { lv: 8, hp: 21, ac: 19, dmg: 16.16, hit: 9 },
+    { lv: 9, hp: 23.53, ac: 20, dmg: 18.09, hit: 11 },
+    { lv: 10, hp: 26.6, ac: 20, dmg: 20.24, hit: 11 },
+    { lv: 11, hp: 29.68, ac: 20, dmg: 22.2, hit: 11 },
+    { lv: 12, hp: 30.08, ac: 20, dmg: 27.49, hit: 11 },
+    { lv: 13, hp: 30.49, ac: 21, dmg: 29.72, hit: 12 },
+    { lv: 14, hp: 33.21, ac: 21, dmg: 31.95, hit: 12 },
+    { lv: 15, hp: 35.91, ac: 22, dmg: 34.18, hit: 13 },
+    { lv: 16, hp: 39.79, ac: 22, dmg: 40.52, hit: 13 },
+    { lv: 17, hp: 46.36, ac: 23, dmg: 43.01, hit: 14 },
+    { lv: 18, hp: 50.03, ac: 23, dmg: 45.5, hit: 14 },
+    { lv: 19, hp: 50.41, ac: 23, dmg: 52.05, hit: 14 },
+    { lv: 20, hp: 58.18, ac: 23, dmg: 55.61, hit: 14 },
+    { lv: 21, hp: 65.05, ac: 23, dmg: 62.17, hit: 14 },
+    { lv: 22, hp: 72.72, ac: 23, dmg: 69.51, hit: 14 },
+    { lv: 23, hp: 81.31, ac: 23, dmg: 77.71, hit: 14 },
+    { lv: 24, hp: 90.9, ac: 23, dmg: 86.88, hit: 14 },
 ];
-const MIN_LV = STATS[0].level;
-const MAX_LV = STATS[STATS.length - 1].level;
+const MIN_LV = STATS[0].lv;
+const MAX_LV = STATS[STATS.length - 1].lv;
 const MIN_ELITE_TURNS = 1;
 const MAX_ELITE_TURNS = 8;
 const LBRAC = '[';
@@ -107,6 +108,9 @@ const MISC = 'misc';
 const ERR_SEP = '; ';
 const METRIC_PRIME = "<em>'</em>";
 const EFF_SHIELD = '<img class="shieldicon" src="./res/shield.svg"/>';
+const HEADER_PRIORITY_LIMIT = 0;
+const HEADER_PRIORITY_ACTIONS = 1;
+const HEADER_PRIORITY_CONCENTRATION = 2;
 const DICE_FMT_MAX_ERR_THRES = 3;
 const FMT_DIGITS = 1;
 const PUNCT = /[.?!]+/;

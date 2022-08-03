@@ -92,63 +92,6 @@ function writeEntryDisp(entry, text) {
     const pane = unwrapNullish(entry.querySelector('.disp'), "entry has no '.disp' pane");
     pane.innerHTML = text;
 }
-function normalizationFactors(baddieTurnCount, baddieActionCap, entriesAndParse) {
-    let hpShareCount = 0;
-    let dmgShareCount = 0;
-    let dmgUsingEntryCount = 0;
-    let actionCount = 0;
-    const data = entriesAndParse
-        .filter(it => it.parse.isSome())
-        .map(it => {
-        const errors = [];
-        const item = it.parse.unwrap();
-        const isAction = it.entry.classList.contains('action');
-        const isUse = isAction || it.entry.id === 'hp';
-        let mbEntryTurns = item.actions();
-        let entryTurns;
-        if (mbEntryTurns.isSome()) {
-            entryTurns = mbEntryTurns.unwrap().nActions;
-        }
-        else {
-            entryTurns = isUse ? entryTurns = 1 : entryTurns = 0;
-        }
-        if (baddieTurnCount === 1 && entryTurns > 1) {
-            errors.push(`multi-turn moves are not available for non-elite baddies`);
-        }
-        else if (entryTurns > baddieTurnCount) {
-            errors.push(`this entry uses too many actions (used ${entryTurns} but maximum is ${baddieTurnCount})`);
-        }
-        const w = 1;
-        const hpShares = item.hp().length > 0 ? w : 0;
-        hpShareCount += hpShares;
-        const dmgShares = item.dmg().length > 0 ? w : 0;
-        dmgShareCount += dmgShares;
-        if (isAction) {
-            if (dmgShares > 0) {
-                dmgUsingEntryCount += 1;
-                actionCount += entryTurns;
-            }
-            else if (hpShares > 0) {
-                actionCount += entryTurns;
-            }
-        }
-        return { hpShares, dmgShares, errors, turns: entryTurns, isAction };
-    });
-    if (actionCount > baddieActionCap) {
-        data.forEach(it => { if (it.isAction) {
-            it.errors.push(`baddie is expected to take ${baddieActionCap} turns, but it has actions for ${actionCount} turns`);
-        } });
-    }
-    return data.map(it => ({
-        errors: it.errors,
-        hp: it.turns * baddieTurnCount * (it.hpShares / hpShareCount),
-        dmg: dmgUsingEntryCount * it.turns * (it.dmgShares / dmgShareCount),
-    }));
-}
-function appendErrors(entry, errors) {
-    const errorEntries = new Err(' ', errors.join(ERR_SEP), '');
-    entry.items.push(errorEntries);
-}
 function rewrapTitle() {
     const entry = unwrapNullish(document.getElementById('title'));
     const text = unwrapNullish(entry.textContent);
@@ -274,8 +217,8 @@ function refresh() {
     const lvEl = unwrapNullish(document.getElementById("lv"), "no '#lv' pane");
     const lv = parseCounter(lvEl);
     const actionEl = unwrapNullish(document.getElementById("actionCount"), "no '#actionCount' pane");
-    const actionsPerRound = parseCounter(actionEl);
-    const { hp, ac, dmg, hit } = budget(parseCounter(lvEl), unwrapNullish(DEFMUL_MOD[lookupKeyword('defmul')]), unwrapNullish(PLHIT_MOD[lookupKeyword('plhit')]), unwrapNullish(BDHIT_MOD[lookupKeyword('bdhit')]));
+    const eliteCount = parseCounter(actionEl);
+    const b = budget(parseCounter(lvEl), unwrapNullish(DEFMUL_MOD[lookupKeyword('defmul')]), unwrapNullish(PLHIT_MOD[lookupKeyword('plhit')]), unwrapNullish(BDHIT_MOD[lookupKeyword('bdhit')]));
     const builder = new EntryBuilder(lv, lookupKeyword('size'));
     const entryElems = entries();
     const entriesAndParse = Array.from(entryElems).map(it => {
@@ -283,30 +226,52 @@ function refresh() {
         const mbParse = str.trim().length === 0 ? Opt.none() : Opt.some(parse(str, builder));
         return { entry: it, parse: mbParse };
     });
-    const norms = normalizationFactors(actionsPerRound, actionsPerRound * EXP_ROUNDS, entriesAndParse);
+    const eqsAndEntry = [];
     for (const it of entriesAndParse) {
         if (it.parse.isNone()) {
             it.entry.remove();
             continue;
         }
         const parse = it.parse.unwrap();
-        const hpEqs = parse.hp();
-        const acEqs = parse.ac();
-        const dmgEqs = parse.dmg();
-        const hitEqs = parse.hit();
-        acEqs.forEach(eq => eq.fact /= acEqs.length);
-        hitEqs.forEach(eq => eq.fact /= hitEqs.length);
-        const { hp: hpNorm, dmg: dmgNorm, errors: normErrors } = unwrapNullish(norms.shift());
-        if (normErrors.length > 0) {
-            appendErrors(parse, normErrors);
+        const isHp = it.entry.id === 'hp';
+        const actionCount = it.entry.classList.contains('action') ? parse.actions().unwrapOr(1) : 0;
+        const usageLimit = parse.limit();
+        const localHpEqs = parse.hp();
+        const localAcEqs = parse.ac();
+        const localDmgEqs = parse.dmg();
+        const localHitEqs = parse.hit();
+        let globalHpEq;
+        let globalDmgEq;
+        if (isHp) {
+            globalHpEq = Eq.default();
+            globalDmgEq = Eq.empty();
         }
-        const divs = {
-            hp: distribute(hpEqs, hp * hpNorm),
-            ac: distribute(acEqs, ac).map(opt => opt.unwrap()),
-            dmg: distribute(dmgEqs, dmg * dmgNorm),
-            hit: distribute(hitEqs, hit).map(opt => opt.unwrap()),
-        };
-        const fmt = it.parse.unwrap().fmt(divs);
+        else if (actionCount > 0) {
+            globalHpEq = localHpEqs.length === 0 ? Eq.empty() : Eq.default();
+            globalDmgEq = localDmgEqs.length === 0 ? Eq.empty() : Eq.default();
+        }
+        else {
+            globalHpEq = Eq.empty();
+            globalDmgEq = Eq.empty();
+        }
+        eqsAndEntry.push({
+            parse, isHp, actionCount, usageLimit,
+            globalHpEq, globalDmgEq,
+            localHpEqs, localAcEqs, localDmgEqs, localHitEqs,
+            entry: it.entry,
+        });
+    }
+    const errors = validateActions(eqsAndEntry, eliteCount);
+    adjustGlobalEqsByValueType(eqsAndEntry);
+    adjustLocalEqsByValueType(eqsAndEntry);
+    adjustEqsForElite(eqsAndEntry, eliteCount);
+    adjustEqsForUsageLimits(eqsAndEntry, eliteCount);
+    const budgets = distributeGlobalBudget(eqsAndEntry, b);
+    for (const it of eqsAndEntry) {
+        const budget = budgets.shift();
+        const divs = distributeLocalBudget(it, budget);
+        unwrapNullish(errors.shift()).forEach(err => divs.errors.push(err));
+        const fmt = it.parse.fmt(divs);
         writeEntryDisp(it.entry, fmt);
     }
     rewrapTitle();
