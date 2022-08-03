@@ -500,7 +500,7 @@ class Limit {
     ty() { return 'limit'; }
     containsErrors() { return false; }
     header() {
-        return Opt.some({ priority: HEADER_PRIORITY_LIMIT, text: `Limit ${this.n}` });
+        return Opt.some({ priority: HEADER_PRIORITY_LIMIT, text: `${this.n}/B` });
     }
     actions() { return Opt.none(); }
     limit() { return Opt.some(this.n); }
