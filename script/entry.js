@@ -19,7 +19,7 @@ const TAG_PATS = [
             ['dmg', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
         ]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => as.has('heal')
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as, Opt.some(DiceTemplate.make(Opt.none(), Opt.none(), Result.err(1)))), temp => as.has('heal')
             ? new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, true)
             : new HpOrDmgVal(Opt.none(), Opt.some(eq), temp, true))),
     },
@@ -60,7 +60,7 @@ const TAG_PATS = [
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
         ]),
-        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
+        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as, Opt.some(DiceTemplate.make(Opt.none(), Opt.none(), Result.err(4.5)))), temp => {
             if (temp.size.isNone()) {
                 temp.size = Opt.some(unwrapNullish(SIZE_HD[gs.size]));
             }

@@ -22,38 +22,54 @@ class Dice {
     }
 }
 class DiceTemplate {
-    static empty() { return new DiceTemplate(Opt.none(), Opt.none(), Opt.none()); }
-    static fromArgs(args) {
+    static make(count, size, plusOrWeight) { return new DiceTemplate(count, size, plusOrWeight); }
+    static empty() { return new DiceTemplate(Opt.none(), Opt.none(), Result.err(1)); }
+    static fromArgs(args, init) {
         const errors = [];
-        let dice = DiceTemplate.empty();
+        const dice = init.unwrapOr(DiceTemplate.empty());
         if (args.has('dcount')) {
-            dispatchOrCollect(parseNumericArgument(args, 'dcount', true), n => { if (n > 0) {
-                dice.count = Opt.some(n);
-            }
-            else {
-                errors.push(`cannot roll a negative number of dice`);
-            } }, errors);
+            dispatchOrCollect(parseNumericArgument(args, 'dcount', true), n => {
+                if (n >= 0) {
+                    dice.count = Opt.some(n);
+                }
+                else {
+                    errors.push(`cannot roll a negative number of dice`);
+                }
+            }, errors);
         }
         if (args.has('dsize')) {
-            dispatchOrCollect(parseNumericArgument(args, 'dsize', true), n => { if (n > 0) {
-                dice.size = Opt.some(n);
-            }
-            else {
-                errors.push(`no such thing as a d${n}`);
-            } }, errors);
+            dispatchOrCollect(parseNumericArgument(args, 'dsize', true), n => {
+                if (n > 0) {
+                    dice.size = Opt.some(n);
+                }
+                else {
+                    errors.push(`no such thing as a d${n}`);
+                }
+            }, errors);
         }
         if (args.has('dplus')) {
-            dispatchOrCollect(parseNumericArgument(args, 'dplus', true), n => dice.plus = Opt.some(n), errors);
+            dispatchOrCollect(parseNumericArgument(args, 'dplus', true), n => {
+                dice.plus = Opt.some(n);
+                dice.plusWeight = Opt.none();
+            }, errors);
         }
         return errors.length > 0 ? Result.err(errors.join(ERR_SEP)) : Result.ok(dice);
     }
     count;
     size;
     plus;
-    constructor(count, size, plus) {
+    plusWeight;
+    constructor(count, size, plusOrWeight) {
         this.count = count;
         this.size = size;
-        this.plus = plus;
+        if (plusOrWeight.isOk()) {
+            this.plus = Opt.some(plusOrWeight.unwrap());
+            this.plusWeight = Opt.none();
+        }
+        else {
+            this.plus = Opt.none();
+            this.plusWeight = Opt.some(plusOrWeight.unwrapErr());
+        }
     }
 }
 const POLY_DMG_DICE = [6, 8, 10, 4, 12];
@@ -82,7 +98,7 @@ function renderDice(goal, template) {
         const mean = size / 2 + 0.5;
         const plusConstr = template.plus.unwrapOr(0);
         const allowance = goal - plusConstr;
-        const spaceForPlus = template.plus.isSome() ? 0 : 1;
+        const spaceForPlus = template.plus.isSome() ? 0 : template.plusWeight.unwrap();
         let count;
         if (template.count.isNone()) {
             const unrounded = allowance / (mean + spaceForPlus);
