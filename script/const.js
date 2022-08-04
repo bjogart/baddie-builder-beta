@@ -99,12 +99,21 @@ const MIN_ELITE_TURNS = 1;
 const MAX_ELITE_TURNS = 8;
 const LBRAC = '[';
 const RBRAC = ']';
-const QUOT = "'";
-const DQUOT = '"';
 const COLON = ':';
 const IDENT = 'name';
 const NUM = 'number';
 const MISC = 'misc';
+const LEX_RULES = {
+    trivia: /^[ \t]/,
+    rules: [
+        { tag: LBRAC, re: /^\[/ },
+        { tag: RBRAC, re: /^\]/ },
+        { tag: COLON, re: /^:/ },
+        { tag: IDENT, re: /^[a-z]+/i },
+        { tag: NUM, re: /^[+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)/ },
+        { tag: MISC, re: /^./ },
+    ],
+};
 const ERR_SEP = '; ';
 const METRIC_PRIME = "<em>'</em>";
 const EFF_SHIELD = '<img class="shieldicon" src="./res/shield.svg"/>';

@@ -6,7 +6,6 @@ function escapeHtml(s) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
-function match(ch, re) { return ch.search(re) == 0; }
 function titleToFileName(title) {
     const trimmed = title.trim();
     const titleOrDefault = trimmed.length === 0 || trimmed == '[title]' ? DEFAULT_BLOCK_NAME : title;
@@ -64,20 +63,30 @@ function loadJson(f) {
     uploader.click();
     uploader.remove();
 }
-function readNum(s) {
+function readFloat(s) {
     const num = parseFloat(s);
     if (isNaN(num)) {
         return Opt.none();
     }
     return Opt.some(num);
 }
+function parseNumericArgument(args, arg, asInt) {
+    const val = unwrapNullish(args.get(arg));
+    const s = val.unwrap().content();
+    const mbN = readFloat(s);
+    if (mbN.isNone()) {
+        return Result.err(`invalid number for argument '${arg}': ${s}`);
+    }
+    const n = mbN.unwrap();
+    if (asInt && !Number.isSafeInteger(n)) {
+        return Result.err(`expected an integer but got ${n}`);
+    }
+    return Result.ok(n);
+}
 function isInt(n) { return n === Math.trunc(n); }
 function panic(msg) { throw msg; }
 function unreachable() { return panic('entered unreachable code'); }
 function unwrapNullish(v, msg = 'unwrap() called on null') { return v ?? panic(msg); }
-function flattenOpt(opt) {
-    return opt.isSome() ? opt.unwrap() : Opt.none();
-}
 class Opt {
     static some(v) { return new Opt({ val: v }); }
     static none() { return new Opt({}); }
@@ -99,4 +108,15 @@ class Result {
     isErr() { return 'errVal' in this.v; }
     unwrap() { return 'successVal' in this.v ? this.v.successVal : panic(`unwrap() called on err(${this.v.errVal})`); }
     unwrapErr() { return 'errVal' in this.v ? this.v.errVal : panic(`unwrap() called on ok(${this.v.successVal})`); }
+}
+function flattenOpt(opt) {
+    return opt.isSome() ? opt.unwrap() : Opt.none();
+}
+function dispatchOrCollect(r, dispatch, errors) {
+    if (r.isOk()) {
+        dispatch(r.unwrap());
+    }
+    else {
+        errors.push(r.unwrapErr());
+    }
 }

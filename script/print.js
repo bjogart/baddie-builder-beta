@@ -24,32 +24,26 @@ class Dice {
 class DiceTemplate {
     static empty() { return new DiceTemplate(Opt.none(), Opt.none(), Opt.none()); }
     static fromArgs(args) {
-        let val;
         const errors = [];
         let dice = DiceTemplate.empty();
-        val = args.get('dcount');
-        if (val) {
-            const n = readNum(val.unwrap().content()).unwrap();
-            if (!isInt(n)) {
-                errors.push(fmtErr(`you cannot roll ${n} dice`));
+        if (args.has('dcount')) {
+            dispatchOrCollect(parseNumericArgument(args, 'dcount', true), n => { if (n > 0) {
+                dice.count = Opt.some(n);
             }
-            dice.count = Opt.some(n);
+            else {
+                errors.push(`cannot roll a negative number of dice`);
+            } }, errors);
         }
-        val = args.get('dsize');
-        if (val) {
-            const n = readNum(val.unwrap().content()).unwrap();
-            if (n <= 0 || !isInt(n)) {
-                errors.push(fmtErr(`no such thing as a d${n}`));
+        if (args.has('dsize')) {
+            dispatchOrCollect(parseNumericArgument(args, 'dsize', true), n => { if (n > 0) {
+                dice.size = Opt.some(n);
             }
-            dice.size = Opt.some(n);
+            else {
+                errors.push(`no such thing as a d${n}`);
+            } }, errors);
         }
-        val = args.get('dplus');
-        if (val) {
-            const n = readNum(val.unwrap().content()).unwrap();
-            if (!isInt(n)) {
-                errors.push(fmtErr(`${n} should be a whole number`));
-            }
-            dice.plus = Opt.some(n);
+        if (args.has('dplus')) {
+            dispatchOrCollect(parseNumericArgument(args, 'dplus', true), n => dice.plus = Opt.some(n), errors);
         }
         return errors.length > 0 ? Result.err(errors.join(ERR_SEP)) : Result.ok(dice);
     }

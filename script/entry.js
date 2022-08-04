@@ -3,7 +3,7 @@ function dispatchOrErr(r, ctor) {
     return r.isErr() ? new Err('', r.unwrapErr(), '') : ctor(r.unwrap());
 }
 function effCtor(gs, as, lbl) {
-    return dispatchOrErr(Eq.fromArgs(as), eq => {
+    return dispatchOrErr(Eq.fromArgs(as, true), eq => {
         const get = (gs) => gs.effModSum;
         const set = (gs, n) => gs.effModSum -= n;
         const prof = (as.has('prof') ? Opt.some(-gs.prof) : Opt.some(0)).map(p => p - 14);
@@ -19,14 +19,14 @@ const TAG_PATS = [
             ['dmg', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
         ]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => as.has('heal')
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => as.has('heal')
             ? new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, true)
             : new HpOrDmgVal(Opt.none(), Opt.some(eq), temp, true))),
     },
     {
         name: 'hit',
         argPats: new Map([['hit', []], ['vs', [IDENT]], ['plus', [NUM]], ['minus', [NUM]]]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => {
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as, true), eq => {
             const target = (as.get('vs') ?? Opt.none()).map(v => v.s).unwrapOr('ac').toLowerCase();
             return new Lbl('', ` vs. ${fmtTagHd(target)}`, new AcOrHitMod(Opt.none(), Opt.some(eq), true));
         }),
@@ -35,12 +35,7 @@ const TAG_PATS = [
         name: 'actions',
         argPats: new Map([['actions', [NUM]]]),
         ctor: (_gs, as) => {
-            const s = unwrapNullish(as.get('actions')).unwrap().content();
-            const mbN = readNum(s);
-            const n = mbN.isSome()
-                ? Result.ok(mbN.unwrap())
-                : Result.err(`unreadable number ${s}`);
-            return dispatchOrErr(n, n => n < 0
+            return dispatchOrErr(parseNumericArgument(as, 'actions', true), n => n < 0
                 ? new Err('', `'${n}' is not a valid number of actions`, '')
                 : new Actions(n));
         }
@@ -49,13 +44,8 @@ const TAG_PATS = [
         name: 'limit',
         argPats: new Map([['limit', [NUM]]]),
         ctor: (_gs, as) => {
-            const s = unwrapNullish(as.get('limit')).unwrap().content();
-            const mbN = readNum(s);
-            const n = mbN.isSome()
-                ? Result.ok(mbN.unwrap())
-                : Result.err(`unreadable number ${s}`);
-            return dispatchOrErr(n, n => n <= 0
-                ? new Err('', `cannot use a move up to ${n} times!`, '')
+            return dispatchOrErr(parseNumericArgument(as, 'limit', true), n => n <= 0
+                ? new Err('', `not possible limit a move to ${n} uses`, '')
                 : new Limit(n));
         }
     },
@@ -70,7 +60,7 @@ const TAG_PATS = [
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
         ]),
-        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
+        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as), temp => {
             if (temp.size.isNone()) {
                 temp.size = Opt.some(unwrapNullish(SIZE_HD[gs.size]));
             }
@@ -81,7 +71,7 @@ const TAG_PATS = [
     {
         name: 'ac',
         argPats: new Map([['ac', []], ['plus', [NUM]], ['minus', [NUM]]]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as), eq => new Lbl(fmtTagHd('ac&nbsp;'), '', new DefVal(eq, Opt.none()))),
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as, true), eq => new Lbl(fmtTagHd('ac&nbsp;'), '', new DefVal(eq, Opt.none()))),
     },
     {
         name: 'mv',
@@ -147,7 +137,7 @@ class Item {
     dmg() { return this.items.flatMap(it => it.dmg()); }
     hit() { return this.items.flatMap(it => it.hit()); }
     fmt(ds) {
-        let endOfHeader = this.items.findIndex(it => match(it.content(), PUNCT));
+        let endOfHeader = this.items.findIndex(it => it.content().search(PUNCT) === 0);
         const hdFmts = [];
         const fmts = [];
         const errs = ds.errors;
@@ -365,23 +355,28 @@ class HpOrDmgVal {
     triviaAfter() { return ''; }
 }
 class Mv {
-    static readTok(lbl, t, errors) {
-        if (!t) {
-            return Opt.none();
+    static parseOptMv(args, errors, arg) {
+        let optMv;
+        if (args.has(arg)) {
+            const mbMv = parseNumericArgument(args, arg, true);
+            if (mbMv.isErr()) {
+                optMv = Opt.none();
+                errors.push(mbMv.unwrapErr());
+            }
+            else {
+                const mv = mbMv.unwrap();
+                optMv = Opt.some(mv);
+                if (mv <= 0) {
+                    errors.push(fmtErr(`you cannot walk at ${mv} MV/round`));
+                }
+            }
         }
-        const s = t.unwrap().content();
-        const mbNum = readNum(s);
-        if (mbNum.isNone()) {
-            errors.push(fmtErr(`${s} is not a valid number`));
-            return Opt.none();
+        else {
+            optMv = Opt.none();
         }
-        const num = mbNum.unwrap();
-        if (num <= 0) {
-            errors.push(fmtErr(`you cannot ${lbl.unwrapOr('walk')} at ${num} MV/round`));
-        }
-        const fmtLbl = lbl.isSome() ? `${lbl.unwrap()} ` : '';
-        return Opt.some(`${fmtLbl}${mbNum.unwrap()}${METRIC_PRIME}`);
+        return optMv.map(mv => `${mv}${METRIC_PRIME}`);
     }
+    static DEFAULT_WALK_MV = 30;
     err;
     walk;
     climb;
@@ -389,10 +384,27 @@ class Mv {
     swim;
     constructor(args) {
         let errors = [];
-        this.walk = Mv.readTok(Opt.none(), args.get('walk'), errors).unwrapOr(`30${METRIC_PRIME}`);
-        this.climb = Mv.readTok(Opt.some('climb'), args.get('climb'), errors).unwrapOr('');
-        this.fly = Mv.readTok(Opt.some('fly'), args.get('fly'), errors).unwrapOr('');
-        this.swim = Mv.readTok(Opt.some('swim'), args.get('swim'), errors).unwrapOr('');
+        let mv;
+        if (args.has('walk')) {
+            const mbMv = parseNumericArgument(args, 'walk', true);
+            if (mbMv.isErr()) {
+                mv = Mv.DEFAULT_WALK_MV;
+                errors.push(mbMv.unwrapErr());
+            }
+            else {
+                mv = mbMv.unwrap();
+                if (mv <= 0) {
+                    errors.push(fmtErr(`you cannot walk at ${mv} MV/round`));
+                }
+            }
+        }
+        else {
+            mv = Mv.DEFAULT_WALK_MV;
+        }
+        this.walk = `${mv}${METRIC_PRIME}`;
+        this.climb = Mv.parseOptMv(args, errors, 'climb');
+        this.fly = Mv.parseOptMv(args, errors, 'fly');
+        this.swim = Mv.parseOptMv(args, errors, 'swim');
         this.err = errors.join(ERR_SEP);
     }
     ty() { return 'mv'; }
@@ -405,7 +417,9 @@ class Mv {
     dmg() { return []; }
     hit() { return []; }
     fmt(_ds) {
-        return [this.walk, this.climb, this.fly, this.swim, this.err]
+        return [this.walk].concat([this.climb, this.fly, this.swim]
+            .filter(it => it.isSome())
+            .map(it => it.unwrap())).concat([this.err])
             .filter(s => s.length > 0)
             .join(', ');
     }
@@ -419,27 +433,12 @@ class Num {
     _triviaAfter;
     constructor(tokens) {
         const num = tokens[0];
-        const prime = tokens[1];
         if (!num) {
             throw 'invalid number parsed';
         }
-        let str;
-        if (!prime) {
-            this._triviaBefore = num.triviaBefore();
-            this._triviaAfter = num.triviaAfter();
-            str = num.content();
-        }
-        else {
-            this._triviaBefore = num.triviaBefore();
-            this._triviaAfter = prime.triviaAfter();
-            if (num.triviaAfter.length + prime.triviaBefore.length === 0) {
-                str = `${num.content()}<em>${prime.content()}</em>`;
-            }
-            else {
-                str = `${num.s}${num.triviaAfter}${prime.triviaBefore}${prime.s}`;
-            }
-        }
-        this.s = `${this.triviaBefore()}${str}${this.triviaAfter()}`;
+        this.s = num.content();
+        this._triviaBefore = num.triviaBefore();
+        this._triviaAfter = num.triviaAfter();
     }
     ty() { return 'num'; }
     containsErrors() { return false; }
@@ -451,7 +450,7 @@ class Num {
     dmg() { return []; }
     hit() { return []; }
     fmt(_ds) { return this.content(); }
-    content() { return this.s; }
+    content() { return `${this.triviaBefore()}${this.s}${this.triviaAfter()}`; }
     triviaBefore() { return this._triviaBefore; }
     triviaAfter() { return this._triviaAfter; }
 }

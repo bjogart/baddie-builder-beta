@@ -15,35 +15,25 @@ class Eq {
     static empty() { return new Eq(0, 0); }
     static default() { return new Eq(1, 0); }
     static make(fact, term) { return new Eq(fact, term); }
-    static fromArgs(args) {
+    static fromArgs(args, asInts) {
         const eq = Eq.default();
         const errors = [];
-        let val;
-        let n;
-        val = args.get('plus');
-        if (val) {
-            n = readNum(val.unwrap().content()).unwrap();
-            eq.term += n;
+        if (args.has('plus')) {
+            dispatchOrCollect(parseNumericArgument(args, 'plus', asInts), n => eq.term += n, errors);
         }
-        val = args.get('minus');
-        if (val) {
-            n = readNum(val.unwrap().content()).unwrap();
-            eq.term -= n;
+        if (args.has('minus')) {
+            dispatchOrCollect(parseNumericArgument(args, 'minus', asInts), n => eq.term -= n, errors);
         }
-        val = args.get('times');
-        if (val) {
-            n = readNum(val.unwrap().content()).unwrap();
-            eq.fact *= n;
+        if (args.has('times')) {
+            dispatchOrCollect(parseNumericArgument(args, 'times', asInts), n => eq.fact *= n, errors);
         }
-        val = args.get('divide');
-        if (val) {
-            n = readNum(val.unwrap().content()).unwrap();
-            if (n === 0) {
-                errors.push(fmtErr('division by 0'));
-            }
-            else {
+        if (args.has('divide')) {
+            dispatchOrCollect(parseNumericArgument(args, 'divide', asInts), n => { if (n !== 0) {
                 eq.fact /= n;
             }
+            else {
+                errors.push('division by 0');
+            } }, errors);
         }
         return errors.length > 0 ? Result.err(errors.join(ERR_SEP)) : Result.ok(eq);
     }

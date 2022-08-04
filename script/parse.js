@@ -1,66 +1,48 @@
 "use strict";
-function lex(text) {
-    return new Stream(lexStr(text));
+function match(s, re) {
+    const m = re.exec(s);
+    if (m === null) {
+        return Opt.none();
+    }
+    const len = m[0].length;
+    return Opt.some({ content: s.substring(0, len), s: s.substring(len) });
 }
-function* lexStr(str) {
-    let pos = 0;
-    while (pos < str.length) {
-        let triviaBefore = chompWhile(str, pos, isTrivia);
-        pos += triviaBefore.length;
-        let tag;
-        let s;
-        if (str.startsWith('[', pos)) {
-            tag = LBRAC;
-            s = str.charAt(pos);
-        }
-        else if (str.startsWith(']', pos)) {
-            tag = RBRAC;
-            s = str.charAt(pos);
-        }
-        else if (str.startsWith(':', pos)) {
-            tag = COLON;
-            s = str.charAt(pos);
-        }
-        else if (str.startsWith('&quot;', pos)) {
-            tag = DQUOT;
-            s = str.substring(pos, pos + 6);
-        }
-        else if (str.startsWith("&#039;", pos)) {
-            tag = QUOT;
-            s = str.substring(pos, pos + 6);
-        }
-        else if (isAlpha(str.charAt(pos))) {
-            tag = IDENT;
-            s = chompWhile(str, pos, isAlpha);
-        }
-        else if (isDigit(str.charAt(pos))) {
-            tag = NUM;
-            s = chompWhile(str, pos, isDigit);
-        }
-        else if ((str.startsWith('+', pos) || str.startsWith('-', pos)) && isDigit(str.charAt(pos + 1))) {
-            tag = NUM;
-            s = str.charAt(pos).concat(chompWhile(str, pos + 1, isDigit));
+function* lexStr(s) {
+    while (s.length > 0) {
+        let preTrivia;
+        const mbPreTrivia = match(s, LEX_RULES.trivia);
+        if (mbPreTrivia.isSome()) {
+            ({ content: preTrivia, s } = mbPreTrivia.unwrap());
         }
         else {
-            tag = MISC;
-            s = str.charAt(pos);
+            preTrivia = '';
         }
-        pos += s.length;
-        let triviaAfter = chompWhile(str, pos, isTrivia);
-        pos += triviaAfter.length;
-        yield new Token(tag, triviaBefore, s, triviaAfter);
+        let content = null;
+        let tag = null;
+        for (const r of LEX_RULES.rules) {
+            const m = match(s, r.re);
+            if (m.isSome()) {
+                tag = r.tag;
+                ({ content, s } = m.unwrap());
+                break;
+            }
+        }
+        let postTrivia;
+        const mbPostTrivia = match(s, LEX_RULES.trivia);
+        if (mbPostTrivia.isSome()) {
+            ({ content: postTrivia, s } = mbPostTrivia.unwrap());
+        }
+        else {
+            postTrivia = '';
+        }
+        yield new Token(unwrapNullish(tag), preTrivia, unwrapNullish(content), postTrivia);
     }
 }
-const TRIVIA = /[ \t\r\n]/;
-function isTrivia(ch) { return match(ch, TRIVIA); }
-const ALPHA = /[a-z]/i;
-function isAlpha(ch) { return match(ch, ALPHA); }
-const DIGIT = /[0-9]/;
-function isDigit(ch) { return match(ch, DIGIT); }
-function chompWhile(s, start, pred) {
-    let end = start;
-    for (; pred(s.charAt(end)); end += 1) { }
-    return s.substring(start, end);
+function lex(text) {
+    const s = new Stream(lexStr(text));
+    s.chompWhile(_ => true);
+    console.log(s.consume().map(t => `"${t.content()}"`).join(', '));
+    return new Stream(lexStr(text));
 }
 class Stream {
     gen;
@@ -154,7 +136,6 @@ function tag(s, b) {
 }
 function n(s, b) {
     s.chomp();
-    s.chompIf(t => t.tag === QUOT || t.tag === DQUOT);
     return b.num(s.consume());
 }
 function startsTag(token) { return token.tag === LBRAC; }
