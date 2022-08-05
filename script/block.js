@@ -32,7 +32,7 @@ function cycleKeywords(it, cycle) {
     kwEl.textContent = next;
     refresh();
 }
-function newEntry(initialText = 'Slam. [hit]; [dmg] bludgeoning.') {
+function newEntry(initialText = 'Slam. [hit], [dmg] bludgeoning.') {
     const entry = Object.assign(document.createElement('div'), {
         innerHTML: `<div class="entry medbr action">
 <div class="disp" onclick="toggleEntry(this)"></div>
