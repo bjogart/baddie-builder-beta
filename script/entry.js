@@ -116,12 +116,15 @@ const TAG_PATS = [
         argPats: new Map([['title', []]]),
         ctor: (_gs, _as) => new Token(IDENT, '', 'Insert name here', ''),
     },
+    {
+        name: 'type',
+        argPats: new Map([['type', []]]),
+        ctor: (_gs, _as) => new Token(IDENT, '', CREATURE_TYPE_HUMANOID, ''),
+    },
 ];
 class Item {
     items;
-    constructor(items) {
-        this.items = items;
-    }
+    constructor(items) { this.items = items; }
     ty() { return 'item'; }
     containsErrors() { return this.items.reduce((b, it) => b || it.containsErrors(), false); }
     header() { return Opt.none(); }

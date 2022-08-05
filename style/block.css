@@ -81,6 +81,10 @@ html {
   padding-left: 0.25rem;
 }
 
+.minwidth {
+  min-width: 2rem;
+}
+
 html {
   font-family: "Source Sans Pro", sans-serif;
   line-height: 1.5em;

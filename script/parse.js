@@ -38,11 +38,7 @@ function* lexStr(s) {
         yield new Token(unwrapNullish(tag), preTrivia, unwrapNullish(content), postTrivia);
     }
 }
-function lex(text) {
-    const s = new Stream(lexStr(text));
-    s.chompWhile(_ => true);
-    return new Stream(lexStr(text));
-}
+function lex(text) { return new Stream(lexStr(text)); }
 class Stream {
     gen;
     _head;

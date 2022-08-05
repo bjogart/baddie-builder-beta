@@ -11,8 +11,8 @@ function titleToFileName(title) {
     const titleOrDefault = trimmed.length === 0 || trimmed == '[title]' ? DEFAULT_BLOCK_NAME : title;
     const name = titleOrDefault.split(/\s+/g)
         .map(s => s.replaceAll(/[^\w]/g, ""))
-        .flatMap(s => [s.charAt(0).toUpperCase(), s.substring(1).toLowerCase()])
-        .join('');
+        .flatMap(s => s.toLowerCase())
+        .join('_');
     return `${name}${BLOCK_FILE_EXT}`;
 }
 function downloadJson(obj, filename) {
