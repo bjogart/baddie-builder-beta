@@ -70,12 +70,15 @@ function validateActions(allEntries, eliteCount) {
     });
 }
 function adjustGlobalEqsByValueType(allEntries) {
-    const hasHealingMoves = allEntries.some(it => it.actionCount > 0 && it.localHpEqs.length > 0);
-    if (hasHealingMoves) {
-        unwrapNullish(allEntries.find(it => it.isHp)).globalHpEq.fact /= (EXP_ROUNDS - 1);
+    const moves = allEntries.filter(it => it.actionCount > 0);
+    const hasHealingMoves = moves.some(it => it.localHpEqs.length > 0);
+    if (!hasHealingMoves) {
+        unwrapNullish(allEntries.find(it => it.isHp)).globalHpEq.fact /= EXP_ROUNDS;
     }
     else {
-        unwrapNullish(allEntries.find(it => it.isHp)).globalHpEq.fact /= EXP_ROUNDS;
+        unwrapNullish(allEntries.find(it => it.isHp)).globalHpEq.fact /= (EXP_ROUNDS - 1);
+        moves.filter(it => it.localHpEqs.length > 0)
+            .forEach(it => it.globalHpEq.fact *= EXP_ROUNDS);
     }
 }
 function adjustLocalEqsByValueType(allEntries) {

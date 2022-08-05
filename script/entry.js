@@ -19,9 +19,15 @@ const TAG_PATS = [
             ['dmg', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
         ]),
-        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as, Opt.some(DiceTemplate.make(Opt.none(), Opt.none(), Result.err(1)))), temp => as.has('heal')
-            ? new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, true)
-            : new HpOrDmgVal(Opt.none(), Opt.some(eq), temp, true))),
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as, Opt.some(DiceTemplate.make(Opt.none(), Opt.none(), Result.err(1.5)))), temp => new HpOrDmgVal(Opt.none(), Opt.some(eq), temp, true))),
+    },
+    {
+        name: 'heal',
+        argPats: new Map([
+            ['heal', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
+            ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
+        ]),
+        ctor: (_gs, as) => dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as, Opt.some(DiceTemplate.make(Opt.none(), Opt.none(), Result.err(1.5)))), temp => new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, true))),
     },
     {
         name: 'hit',
@@ -60,13 +66,15 @@ const TAG_PATS = [
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
             ['dcount', [NUM]], ['dsize', [NUM]], ['dplus', [NUM]],
         ]),
-        ctor: (gs, as) => dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as, Opt.some(DiceTemplate.make(Opt.none(), Opt.none(), Result.err(4.5)))), temp => {
-            if (temp.size.isNone()) {
-                temp.size = Opt.some(unwrapNullish(SIZE_HD[gs.size]));
-            }
-            const entry = new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, false);
-            return new Lbl(fmtTagHd('hp&nbsp;'), '', entry);
-        })),
+        ctor: (gs, as) => {
+            const hd_size = unwrapNullish(BDSIZE_TO_HD_DSIZE[gs.size]);
+            const hd_mean = (1 + hd_size) / 2;
+            const defTempl = DiceTemplate.make(Opt.none(), Opt.some(hd_size), Result.err(hd_mean));
+            return dispatchOrErr(Eq.fromArgs(as, false), eq => dispatchOrErr(DiceTemplate.fromArgs(as, Opt.some(defTempl)), temp => {
+                const entry = new HpOrDmgVal(Opt.some(eq), Opt.none(), temp, false);
+                return new Lbl(fmtTagHd('hp&nbsp;'), '', entry);
+            }));
+        },
     },
     {
         name: 'ac',
@@ -668,7 +676,7 @@ class EntryBuilder {
         }
         let tag;
         if (mbRes.isNone()) {
-            tag = errTag(l, `${args[0]?.name.content()} is not a valid tag`, r);
+            tag = errTag(l, `unknown tag '${args[0]?.name.content()}'`, r);
         }
         else {
             const res = mbRes.unwrap();
