@@ -123,9 +123,7 @@ class Item {
         this.items = items;
     }
     ty() { return 'item'; }
-    containsErrors() {
-        return this.items.reduce((b, it) => b || it.containsErrors(), false);
-    }
+    containsErrors() { return this.items.reduce((b, it) => b || it.containsErrors(), false); }
     header() { return Opt.none(); }
     limitTags() { return this.items.map(it => it.limit()).filter(it => it.isSome()); }
     limit() { return this.limitTags()[0] ?? Opt.none(); }
@@ -158,7 +156,8 @@ class Item {
             errs.push(`too many [limit] tags (expected 1 at most)`);
         }
         const errorMsgs = errs.length === 0 ? '' : ` ${errs.map(fmtErr).join(ERR_SEP)}`;
-        return `${fmtTagHd(hdFmts.join(''))}${fmts.join('')}${errorMsgs}`;
+        const hd = hdFmts.length > 0 ? fmtTagHd(hdFmts.join('')) : '';
+        return `${hd}${fmts.join('')}${errorMsgs}`;
     }
     content() { return this.items.map(it => it.content()).join(''); }
     triviaBefore() { return this.items[0]?.triviaBefore() ?? ''; }

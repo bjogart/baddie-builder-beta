@@ -35,8 +35,8 @@ function cycleKeywords(it, cycle) {
 function newEntry(initialText = 'Slam. [hit]; [dmg] bludgeoning.') {
     const entry = Object.assign(document.createElement('div'), {
         innerHTML: `<div class="entry medbr action">
-<div class="disp" onclick="toggleEntry(this)">
-</div><textarea class="edit hide" onblur="toggleEntry(this)" autocomplete="off">${initialText}</textarea>
+<div class="disp" onclick="toggleEntry(this)"></div>
+<div class="edit hide" contenteditable onblur="toggleEntry(this)" autocomplete="off">${initialText}</div>
 </div>`
     }).firstChild;
     return entry;
@@ -74,7 +74,7 @@ function adjEliteCounter(toggler, adj) {
 }
 function entryMarkupTextContent(entry) {
     const pane = unwrapNullish(entry.querySelector('.edit'), "entry has no '.edit' pane");
-    let s = pane.value;
+    let s = pane.innerText;
     if (s.trim().length === 0) {
         if (entry.id.length > 0) {
             s = `[${entry.id}]`;
@@ -89,12 +89,15 @@ function entryMarkupTextContent(entry) {
     return s;
 }
 function writeEntryDisp(entry, text) {
+    if (text.trim().length === 0) {
+        text = fmtErr('Empty block');
+    }
     const pane = unwrapNullish(entry.querySelector('.disp'), "entry has no '.disp' pane");
     pane.innerHTML = text;
 }
 function rewrapTitle() {
     const entry = unwrapNullish(document.getElementById('title'));
-    const text = unwrapNullish(entry.textContent);
+    const text = unwrapNullish(entry.innerText);
     const splits = text.split(/\s+/);
     splits.reverse();
     unwrapNullish(entry.querySelector('.disp')).replaceChildren(...splits.map(s => {
@@ -116,7 +119,7 @@ function saveEntries(button) {
     if (actionCount !== null) {
         data.push({ id: 'actionCount', text: actionCount });
     }
-    const type = unwrapNullish(document.getElementById('type')?.querySelector('.edit')).value;
+    const type = unwrapNullish(document.getElementById('type')?.querySelector('.edit')).innerText;
     data.push({ id: 'type', text: type });
     const size = lookupKeyword('size');
     if (size !== null) {
@@ -156,7 +159,7 @@ function saveEntries(button) {
         return;
     }
     const pane = unwrapNullish(document.getElementById('title')?.querySelector('.edit'));
-    const title = pane.value.trim();
+    const title = pane.innerText.trim();
     const filename = titleToFileName(title);
     downloadJson(obj, filename);
 }
@@ -183,7 +186,7 @@ function loadEntries(button) {
                     toggleButton(actionCountToggler);
                 }
                 const type = json.type.unwrapOr(CREATURE_TYPE_HUMANOID);
-                unwrapNullish(document.getElementById('type')?.querySelector('.edit')).value = type;
+                unwrapNullish(document.getElementById('type')?.querySelector('.edit')).innerText = type;
                 const size = json.size.unwrapOr(SIZE_MEDIUM);
                 unwrapNullish(document.getElementById('size')?.firstChild).textContent = size;
                 const bdhit = json.bdhit.unwrapOr(BDHIT_MID);
@@ -195,7 +198,7 @@ function loadEntries(button) {
                 const namedEntries = ['title', 'hp', 'ac', 'mv', 'str', 'dex', 'con', 'int', 'wis', 'cha'];
                 for (const id of namedEntries) {
                     const edit = unwrapNullish(document.getElementById(id)?.querySelector('.edit'), `no '${id}' pane, or invalid substructure`);
-                    edit.value = json[id].unwrapOr('');
+                    edit.innerText = json[id].unwrapOr('');
                 }
                 const actionPane = unwrapNullish(document.getElementById('actions'), "no '#actions' pane");
                 actionPane.replaceChildren(unwrapNullish(actionPane.firstChild), ...json.actions.map(newEntry), unwrapNullish(actionPane.lastChild));

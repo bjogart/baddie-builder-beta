@@ -41,7 +41,6 @@ function* lexStr(s) {
 function lex(text) {
     const s = new Stream(lexStr(text));
     s.chompWhile(_ => true);
-    console.log(s.consume().map(t => `"${t.content()}"`).join(', '));
     return new Stream(lexStr(text));
 }
 class Stream {
