@@ -56,11 +56,6 @@ const TAG_PATS = [
         }
     },
     {
-        name: 'concentration',
-        argPats: new Map([['concentration', []]]),
-        ctor: (_gs, _as) => new Concentration(),
-    },
-    {
         name: 'hp',
         argPats: new Map([
             ['hp', []], ['plus', [NUM]], ['minus', [NUM]], ['times', [NUM]], ['divide', [NUM]],
@@ -88,6 +83,16 @@ const TAG_PATS = [
             ['swim', [NUM]]
         ]),
         ctor: (_gs, as) => new Lbl(fmtTagHd('mv&nbsp;'), '', new Mv(as)),
+    },
+    {
+        name: 'prof',
+        argPats: new Map([['prof', []]]),
+        ctor: (gs, _as) => new Snippet(`${gs.prof}`),
+    },
+    {
+        name: 'concentration',
+        argPats: new Map([['concentration', []]]),
+        ctor: (_gs, _as) => new Concentration(),
     },
     {
         name: 'str',
@@ -152,11 +157,11 @@ class Item {
         const errs = ds.errors;
         let headerProps = this.items.map(it => it.header()).filter(it => it.isSome()).map(it => it.unwrap());
         headerProps.sort((a, b) => a.priority - b.priority);
-        const props = headerProps.length > 0 ? `(${headerProps.map(it => it.text).join(", ")})` : '';
+        const props = headerProps.length > 0 ? `(${headerProps.map(it => it.text).join(", ")}) ` : '';
         this.items.forEach((it, idx) => {
             let fmt = it.fmt(ds);
             if (idx === endOfHeader && props.length > 0) {
-                fmt = ` ${props}${fmt}`;
+                fmt = `${fmt} ${props}`;
             }
             idx > endOfHeader ? fmts.push(fmt) : hdFmts.push(fmt);
         });
@@ -377,14 +382,14 @@ class Mv {
                 const mv = mbMv.unwrap();
                 optMv = Opt.some(mv);
                 if (mv <= 0) {
-                    errors.push(fmtErr(`you cannot walk at ${mv} MV/round`));
+                    errors.push(fmtErr(`you cannot ${arg} at ${mv} MV/round`));
                 }
             }
         }
         else {
             optMv = Opt.none();
         }
-        return optMv.map(mv => `${mv}${METRIC_PRIME}`);
+        return optMv.map(mv => `${arg} ${mv}${METRIC_PRIME}`);
     }
     static DEFAULT_WALK_MV = 30;
     err;
@@ -471,7 +476,7 @@ class Actions {
     containsErrors() { return false; }
     header() {
         return this.n > 1
-            ? Opt.some({ priority: HEADER_PRIORITY_ACTIONS, text: `${this.n} Actions` })
+            ? Opt.some({ priority: HEADER_PRIORITY_ACTIONS, text: `${this.n}A` })
             : Opt.none();
     }
     actions() { return Opt.some(this.n); }
@@ -544,6 +549,23 @@ class Err {
     content() { return fmtErr(`${this.triviaBefore()}${this.msg}${this.triviaAfter()}`); }
     triviaBefore() { return this._triviaBefore; }
     triviaAfter() { return this._triviaAfter; }
+}
+class Snippet {
+    s;
+    constructor(s) { this.s = s; }
+    ty() { return 'snippet'; }
+    containsErrors() { return false; }
+    actions() { return Opt.none(); }
+    limit() { return Opt.none(); }
+    header() { return Opt.none(); }
+    hp() { return []; }
+    ac() { return []; }
+    dmg() { return []; }
+    hit() { return []; }
+    fmt(_ds) { return this.s; }
+    content() { return this.s; }
+    triviaBefore() { return ''; }
+    triviaAfter() { return ''; }
 }
 class Token {
     tag;
