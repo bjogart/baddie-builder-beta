@@ -95,6 +95,11 @@ const TAG_PATS = [
         ctor: (_gs, _as) => new Concentration(),
     },
     {
+        name: 'reaction',
+        argPats: new Map([['reaction', []]]),
+        ctor: (_gs, _as) => new Reaction(),
+    },
+    {
         name: 'str',
         argPats: new Map([['str', []], ['plus', [NUM]], ['minus', [NUM]], ['prof', []]]),
         ctor: (gs, as) => effCtor(gs, as, 'str'),
@@ -498,6 +503,24 @@ class Concentration {
     actions() { return Opt.none(); }
     header() {
         return Opt.some({ priority: HEADER_PRIORITY_CONCENTRATION, text: 'C' });
+    }
+    hp() { return []; }
+    ac() { return []; }
+    dmg() { return []; }
+    hit() { return []; }
+    fmt(_ds) { return ''; }
+    content() { return ''; }
+    triviaBefore() { return ''; }
+    triviaAfter() { return ''; }
+}
+class Reaction {
+    constructor() { }
+    ty() { return 'reaction'; }
+    containsErrors() { return false; }
+    limit() { return Opt.none(); }
+    actions() { return Opt.none(); }
+    header() {
+        return Opt.some({ priority: HEADER_PRIORITY_REACTION, text: 'R' });
     }
     hp() { return []; }
     ac() { return []; }

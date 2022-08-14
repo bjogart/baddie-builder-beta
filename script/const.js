@@ -120,6 +120,7 @@ const METRIC_PRIME = "<em>'</em>";
 const EFF_SHIELD = '<img class="shieldicon" src="./res/shield.svg"/>';
 const HEADER_PRIORITY_LIMIT = 0;
 const HEADER_PRIORITY_ACTIONS = 1;
+const HEADER_PRIORITY_REACTION = 1;
 const HEADER_PRIORITY_CONCENTRATION = 2;
 const DICE_FMT_MAX_ERR_THRES = 3;
 const FMT_DIGITS = 1;
