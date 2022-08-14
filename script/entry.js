@@ -6,7 +6,7 @@ function effCtor(gs, as, lbl) {
     return dispatchOrErr(Eq.fromArgs(as, true), eq => {
         const get = (gs) => gs.effModSum;
         const set = (gs, n) => gs.effModSum -= n;
-        const prof = (as.has('prof') ? Opt.some(-gs.prof) : Opt.some(0)).map(p => p - 14);
+        const prof = (as.has('prof') ? Opt.some(-gs.prof) : Opt.some(0)).map(p => p - EFF_DC_BASE - gs.magBonus);
         const val = new DefVal(eq, prof);
         const entry = new ZeroSum(gs, get, set, eq, val, 'effective saves');
         return new Lbl(`${fmtTagHd(lbl)}&nbsp;`, '', entry);
@@ -666,7 +666,8 @@ class EntryBuilder {
     constructor(lv, size) {
         this.globals = {
             effModSum: 0,
-            prof: Math.min(6, Math.max(0, Math.ceil(lv / 4) + 1)),
+            prof: lv < 5 ? 2 : lv < 9 ? 3 : lv < 13 ? 4 : lv < 17 ? 5 : 6,
+            magBonus: lv < 3 ? 0 : lv < 9 ? 1 : lv < 15 ? 2 : 3,
             size,
         };
     }

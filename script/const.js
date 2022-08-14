@@ -61,6 +61,7 @@ const BLOCK_FILE_EXT = '.baddie';
 const PLAYER_HIT = 0.6;
 const BADDIE_HIT = 0.6;
 const HIT_INCR = 0.05;
+const EFF_DC_BASE = 14;
 const EXP_ROUNDS = 3;
 const FRAC_OF_FREE_MOVES_SHARED_WITH_LIMITED_MOVES = 1 / 4;
 const STATS = [
