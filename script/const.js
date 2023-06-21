@@ -112,7 +112,7 @@ const LEX_RULES = {
         { tag: COLON, re: /^:/ },
         { tag: IDENT, re: /^[a-z]+/i },
         { tag: NUM, re: /^[+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)/ },
-        { tag: MISC, re: /^./s },
+        { tag: MISC, re: /^./ },
     ],
 };
 const ERR_SEP = '; ';
